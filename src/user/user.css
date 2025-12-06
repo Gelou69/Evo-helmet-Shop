@@ -1,0 +1,418 @@
+@import "tailwindcss";
+
+/* * -------------------------------------------------------------------
+ * USER SCOPE WRAPPER 
+ * All styles below are now scoped to elements inside the .user-scope class.
+ * You must wrap your <User /> component's content in <div className="user-scope">
+ * -------------------------------------------------------------------
+ */
+.user-scope {
+    /* We must reset the default body/page background and text color outside 
+     * the scope because the original :root styles are now contained within 
+     * this selector. The main index.html body will be styled by admin.css 
+     * or remain default. */
+    background-color: var(--bg); 
+    color: var(--text);
+    min-height: 100vh;
+    width: 100%; /* Ensure it spans the full width */
+    
+    /* Inherit the custom properties */
+    :root {
+        /* Font */
+        font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        font-weight: 400;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+
+        /* Dark Mode (Default) */
+        --primary: #646cff;
+        --primary-hover: #535bf2;
+        --accent: #f7b731;
+        --accent-hover: #f9d71c;
+
+        --green: #2ecc71;
+        --green-hover: #28b463;
+        --red: #e74c3c;
+        --red-hover: #c0392b;
+        --yellow: #f1c40f;
+        --yellow-hover: #f39c12;
+
+        --text: rgba(255, 255, 255, 0.9);
+        --text-muted: rgba(255, 255, 255, 0.6);
+        --bg: #242424;
+        --surface: #3a3a3a;
+        --border: #4a4a4a;
+
+        /* Transitions & Shadows */
+        --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-bounce: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+            0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+        color-scheme: light dark;
+        transition: color var(--transition-fast), background-color var(--transition-fast);
+    }
+}
+
+
+/* Media Query for Light Mode */
+@media (prefers-color-scheme: light) {
+    .user-scope :root { /* Scoping the :root inside the user-scope */
+        --primary: #646cff;
+        --primary-hover: #535bf2;
+        --accent: #d90062;
+        --accent-hover: #b30051;
+        --green: #2ecc71;
+        --green-hover: #28b463;
+        --red: #e74c3c;
+        --red-hover: #c0392b;
+        --yellow: #f1c40f;
+        --yellow-hover: #f39c12;
+        --text: #213547;
+        --text-muted: #5a6a7b;
+        --bg: #ffffff;
+        --surface: #f9f9f9;
+        --border: #e0e0e0;
+    }
+}
+
+
+/* Base Styles - Now scoped */
+.user-scope body { /* Targetting body *inside* user-scope */
+    margin: 0;
+    display: grid;
+    place-items: center;
+    min-width: 320px;
+    min-height: 100vh;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+@media (min-width: 768px) {
+    .user-scope body {
+        padding: 1.5rem 0;
+    }
+}
+
+.user-scope h1 {
+    font-size: 3.2em;
+    line-height: 1.1;
+}
+
+@media (max-width: 768px) {
+    .user-scope h1 {
+        font-size: 2.5em;
+    }
+}
+
+.user-scope a {
+    font-weight: 500;
+    color: var(--primary);
+    text-decoration: none;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.user-scope a:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+    transform: translateY(-1px);
+}
+
+/* Buttons - Now scoped */
+.user-scope button {
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    padding: 0.75em 1.5em;
+    font-size: 1em;
+    font-weight: 600;
+    font-family: inherit;
+    background-color: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+.user-scope button:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.user-scope button:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: var(--shadow-sm);
+}
+
+.user-scope button:focus,
+.user-scope button:focus-visible {
+    outline: 4px auto -webkit-focus-ring-color;
+    outline-offset: 2px;
+}
+
+/* Components - Now scoped */
+.user-scope .app-container {
+    @apply flex flex-col h-full;
+    width: 697px;
+}
+
+.user-scope .header-nav {
+    @apply flex justify-between items-center border-b flex-shrink-0;
+    width: 100%;
+    max-width: 700px;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    padding: 1rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .user-scope .header-nav {
+        padding: 0.75rem 1rem;
+    }
+}
+
+.user-scope .title-text {
+    @apply text-sm font-semibold mb-2;
+    font-size: 1.6875rem;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.user-scope .card-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-6;
+    width: 100%;
+    max-width: 700px;
+}
+
+.user-scope .card-image {
+    @apply w-full object-cover;
+    height: 320px;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-md);
+    transition: transform var(--transition-bounce), box-shadow var(--transition-bounce);
+}
+
+.user-scope .card-image:hover {
+    transform: scale(1.03) rotate(1deg);
+    box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 640px) {
+    .user-scope .card-image {
+        height: 200px;
+    }
+}
+
+/* Buttons with gradient - Now scoped */
+.user-scope .btn-solid-green {
+    @apply w-full py-2 px-4 rounded-lg font-semibold transition duration-200;
+    background: linear-gradient(135deg, var(--green), var(--green-hover));
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.user-scope .btn-solid-green:hover {
+    background: linear-gradient(135deg, var(--green-hover), var(--green));
+}
+
+/* Red Button - Now scoped */
+.user-scope .btn-solid-red {
+    @apply w-full py-2 px-4 rounded-lg font-semibold transition duration-200;
+    background: linear-gradient(135deg, var(--red), var(--red-hover));
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.user-scope .btn-solid-red:hover {
+    background: linear-gradient(135deg, var(--red-hover), var(--red));
+}
+
+/* Gray Surface Button - Now scoped */
+.user-scope .btn-surface {
+    @apply w-full py-3 px-4 rounded-lg font-bold uppercase transition duration-150 shadow-md mt-2;
+    background-color: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.user-scope .btn-surface:hover {
+    background-color: var(--bg);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Icons - Now scoped */
+.user-scope svg.w-6.h-6 {
+    color: var(--text);
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.user-scope .icon-header {
+    @apply w-6 h-6;
+    color: var(--text);
+}
+
+.user-scope .icon-header:hover {
+    color: var(--accent);
+    transform: scale(1.1);
+}
+
+.user-scope svg.w-4.h-4 {
+    color: var(--text);
+}
+.user-scope svg.w-4.h-4:hover {
+    color: var(--accent);
+}
+
+/* --- Enhanced user styles (additional) --- */
+.user-scope {
+    --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    --glass: rgba(255,255,255,0.03);
+}
+
+.user-scope .nav-bar {
+    display:flex; align-items:center; justify-content:space-between; gap:1rem; width:100%; max-width:700px; padding:0.75rem 1.25rem; background:var(--surface); border-radius:0.75rem; box-shadow:var(--shadow-md);
+}
+
+.user-scope .logo { font-weight:800; letter-spacing:-0.02em; }
+
+.user-scope .card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.04);
+    padding:1rem; border-radius:0.75rem; box-shadow: var(--shadow-sm); transition:transform var(--transition-bounce), box-shadow var(--transition-bounce);
+}
+.user-scope .card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+
+.user-scope .grid-cols-3 {
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:1rem; width:100%; max-width:1100px;
+}
+@media (max-width: 900px) { .user-scope .grid-cols-3 { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 600px) { .user-scope .grid-cols-3 { grid-template-columns: 1fr; } }
+
+
+.user-scope .btn-primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent-hover)); color:#000; padding:0.75rem 1rem; border-radius:0.75rem; font-weight:700; box-shadow: 0 8px 30px rgba(234,179,8,0.08);
+}
+.user-scope .btn-outline { background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--text); }
+
+.user-scope .muted { color:var(--text-muted); }
+
+.user-scope .product-price { color: var(--yellow); font-weight:800; font-size:1.05rem; }
+
+/* subtle entry animation */
+.user-scope .fade-in { animation: fade-in-up 420ms cubic-bezier(.2,.9,.3,1) both; }
+@keyframes fade-in-up { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform: translateY(0) } }
+
+/* small utility spacing */
+.user-scope .mb-2 { margin-bottom:0.5rem; }
+.user-scope .mt-2 { margin-top:0.5rem; }
+
+/* Order Tracking Modal Styles */
+.user-scope .order-tracking-modal {
+    animation: modalSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Google Map styles */
+.user-scope .google-map-container {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #1a1a1e;
+}
+
+/* Status Timeline */
+.user-scope .status-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.user-scope .status-timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.user-scope .status-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(234, 179, 8, 0.3), transparent);
+}
+
+.user-scope .status-timeline-item:last-child::before {
+    display: none;
+}
+
+/* Order Item Card */
+.user-scope .order-item-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(24, 24, 27, 0.4);
+    border: 1px solid rgba(161, 161, 170, 0.1);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.user-scope .order-item-card:hover {
+    background: rgba(24, 24, 27, 0.6);
+    border-color: rgba(234, 179, 8, 0.3);
+}
+
+/* Order Summary Box */
+.user-scope .order-summary {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.05), rgba(234, 179, 8, 0.02));
+    border: 1px solid rgba(234, 179, 8, 0.2);
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+/* Smooth scroll for modal */
+.user-scope .order-tracking-modal {
+    max-height: 90vh;
+}
+
+/* Track Button */
+.user-scope .track-button {
+    background: linear-gradient(90deg, #eab308, #f9d71c);
+    color: #000;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(234, 179, 8, 0.2);
+}
+
+.user-scope .track-button:hover {
+    background: linear-gradient(90deg, #f9d71c, #eab308);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(234, 179, 8, 0.3);
+}
+
+.user-scope .track-button:active {
+    transform: translateY(0);
+}
