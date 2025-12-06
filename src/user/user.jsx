@@ -1,9 +1,7 @@
-    import React, { useState, useEffect, useRef } from "react";
-    import './user.css';
-    import { loadStripe } from '@stripe/stripe-js';
-    import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-    // Stripe client initialization using Vite env variable `VITE_STRIPE_PUBLISHABLE_KEY`
+import React, { useState, useEffect, useRef } from "react";
+import './user.css';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements, PaymentElement, usePaymentIntent } from '@stripe/react-stripe-js';    // Stripe client initialization using Vite env variable `VITE_STRIPE_PUBLISHABLE_KEY`
     const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
     // --- Supabase Initialization ---
     // NOTE: Ensure your .env file has VITE_ prefix (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY)
@@ -591,39 +589,22 @@
         );
     };
 
-    // --- PAYMENT FORM (Stripe Elements) ---
+    // --- PAYMENT FORM (Stripe Payment Element - Mobile Compatible) ---
     const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
     const PaymentForm = ({ amount, onSuccess, onError, onProcessing }) => {
         const stripe = useStripe();
         const elements = useElements();
-        const [cardReady, setCardReady] = useState(false);
         const [processing, setProcessing] = useState(false);
-
-        useEffect(() => {
-            let mounted = true;
-            // Poll briefly until the CardElement is available (Stripe Elements mounts asynchronously)
-            const check = () => {
-                try {
-                    const el = elements && elements.getElement && elements.getElement(CardElement);
-                    if (mounted && !!el) setCardReady(true);
-                } catch (e) {
-                    // ignore
-                }
-            };
-            check();
-            const id = setInterval(check, 250);
-            return () => { mounted = false; clearInterval(id); };
-        }, [elements]);
 
         const handleSubmit = async (e) => {
             e.preventDefault();
             if (!stripe || !elements) return onError('Stripe not loaded');
-            const card = elements.getElement(CardElement);
-            if (!card) return onError('Card input not found. Please refresh the page and try again.');
+            
             setProcessing(true);
             onProcessing(true);
             try {
+                // Create Payment Intent on backend
                 const res = await fetch(`${backendBase}/create-payment-intent`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -636,13 +617,19 @@
                 const data = await res.json();
                 const clientSecret = data.clientSecret || data.client_secret;
                 if (!clientSecret) throw new Error('Payment initialization failed (missing client secret)');
-                const card = elements.getElement(CardElement);
-                if (!card) throw new Error('Card input not found');
 
-                const confirm = await stripe.confirmCardPayment(clientSecret, { payment_method: { card } });
+                // Confirm payment using modern Payment Element (handles mobile payments)
+                const confirm = await stripe.confirmPayment({
+                    elements,
+                    clientSecret,
+                    confirmParams: {
+                        return_url: `${window.location.origin}/checkout?status=success`
+                    },
+                    redirect: 'if_required' // Don't redirect on mobile redirects
+                });
 
                 if (confirm.error) throw confirm.error;
-                if (confirm.paymentIntent && confirm.paymentIntent.status === 'succeeded') {
+                if (confirm.paymentIntent && (confirm.paymentIntent.status === 'succeeded' || confirm.paymentIntent.status === 'processing')) {
                     onSuccess(confirm.paymentIntent);
                 } else {
                     throw new Error('Payment not completed. Status: ' + (confirm.paymentIntent?.status || 'unknown'));
@@ -658,12 +645,20 @@
         return (
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="p-4 bg-zinc-900/20 border border-zinc-800 rounded-xl">
-                    <CardElement options={{ hidePostalCode: true, style: { base: { color: '#fff', '::placeholder': { color: '#9CA3AF' } } } }} />
+                    <PaymentElement 
+                        options={{ 
+                            layout: "tabs",
+                            defaultValues: {
+                                billingDetails: {
+                                    name: ""
+                                }
+                            }
+                        }} 
+                    />
                 </div>
-                <button type="submit" disabled={!cardReady || processing} className={`w-full py-3 rounded-xl font-black uppercase tracking-widest ${(!cardReady || processing) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}>
+                <button type="submit" disabled={!stripe || processing} className={`w-full py-3 rounded-xl font-black uppercase tracking-widest ${(!stripe || processing) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}>
                     {processing ? 'Processing…' : `Pay ₱${amount.toFixed(2)}`}
                 </button>
-                {!cardReady && <p className="text-xs text-zinc-400 mt-2">Card input loading — please wait a moment.</p>}
             </form>
         );
     };
