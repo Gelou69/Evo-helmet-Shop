@@ -4,12 +4,84 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Admin from './admin/admin.jsx';
 import User from './user/user.jsx';
 import "tailwindcss";
-// LoadingScreen component
+
+// Multi-page LoadingScreen component
 function LoadingScreen() {
+	const [currentPage, setCurrentPage] = React.useState(0);
+
+	const pages = [
+		{
+			title: "Welcome to Evo Helmet Shop",
+			description: "Discover premium quality helmets for your safety",
+			image: "/logo.jpg"
+		},
+		{
+			title: "Quality & Safety",
+			description: "All our helmets meet international safety standards",
+			image: "/logo.jpg"
+		},
+		{
+			title: "Get Started",
+			description: "Browse our collection and find your perfect helmet",
+			image: "/logo.jpg"
+		}
+	];
+
+	const handleNext = () => {
+		if (currentPage < pages.length - 1) {
+			setCurrentPage(currentPage + 1);
+		}
+	};
+
+	const handleOrderNow = () => {
+		window.location.href = '/';
+	};
+
 	return (
-		<div className="flex flex-col items-center justify-center h-screen bg-white">
-			<img src="/logo.jpg" alt="Logo" className="w-32 h-32 mb-6 animate-bounce" />
-			<h2 className="text-2xl font-bold text-gray-700">Loading...</h2>
+		<div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-gray-100">
+			<div className="flex flex-col items-center justify-center space-y-8">
+				<img src={pages[currentPage].image} alt="Logo" className="w-40 h-40 animate-bounce" />
+				<div className="text-center">
+					<h1 className="text-4xl font-bold text-gray-800 mb-3">{pages[currentPage].title}</h1>
+					<p className="text-xl text-gray-600">{pages[currentPage].description}</p>
+				</div>
+
+				{/* Progress Dots */}
+				<div className="flex space-x-3">
+					{pages.map((_, index) => (
+						<div
+							key={index}
+							className={`h-3 w-3 rounded-full transition-all ${
+								index === currentPage ? 'bg-blue-600 w-8' : 'bg-gray-300'
+							}`}
+						/>
+					))}
+				</div>
+
+				{/* Buttons */}
+				<div className="flex gap-4">
+					{currentPage < pages.length - 1 ? (
+						<button
+							onClick={handleNext}
+							className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+						>
+							Next
+						</button>
+					) : (
+						<button
+							onClick={handleOrderNow}
+							className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
+						>
+							Order Now
+						</button>
+					)}
+				</div>
+
+				{/* Page Counter */}
+				<p className="text-gray-600 text-sm">
+					Page {currentPage + 1} of {pages.length}
+				</p>
+			</div>
 		</div>
 	);
 }
@@ -17,10 +89,8 @@ function LoadingScreen() {
 function MainApp() {
 	const [loading, setLoading] = React.useState(true);
 
-	React.useEffect(() => {
-		const timer = setTimeout(() => setLoading(false), 2000); // 2 seconds
-		return () => clearTimeout(timer);
-	}, []);
+	// Loading screen will stay until user clicks "Order Now"
+	// No automatic timeout
 
 	if (loading) {
 		return <LoadingScreen />;
