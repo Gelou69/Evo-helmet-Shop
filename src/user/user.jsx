@@ -1,9 +1,7 @@
-    import React, { useState, useEffect, useRef } from "react";
-    import './user.css';
-    import { loadStripe } from '@stripe/stripe-js';
-    import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-    // Stripe client initialization using Vite env variable `VITE_STRIPE_PUBLISHABLE_KEY`
+import React, { useState, useEffect, useRef } from "react";
+import './user.css';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements, PaymentElement, usePaymentIntent } from '@stripe/react-stripe-js';    // Stripe client initialization using Vite env variable `VITE_STRIPE_PUBLISHABLE_KEY`
     const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
     // --- Supabase Initialization ---
     // NOTE: Ensure your .env file has VITE_ prefix (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY)
@@ -916,6 +914,7 @@
                                                     <div className="ml-4">
                                                         <p className="text-sm font-bold text-white">{item.products?.name}</p>
                                                         <p className="text-xs text-zinc-400">Qty: {item.quantity}</p>
+                                                        {item.product_size && <p className="text-xs text-zinc-400">Size: <span className="text-white font-bold">{item.product_size}</span></p>}
                                                     </div>
                                                 </div>
                                             ))}
@@ -949,6 +948,7 @@
                                                         <p className="font-bold text-white">{it.products?.name}</p>
                                                         <p className="text-xs text-zinc-400">Color: <span className="text-white font-bold">{it.products?.color || 'N/A'}</span></p>
                                                         <p className="text-xs text-zinc-400">Quantity: <span className="text-white font-bold">{it.quantity}</span></p>
+                                                        {it.product_size && <p className="text-xs text-zinc-400">Size: <span className="text-white font-bold">{it.product_size}</span></p>}
                                                     </div>
                                                     <div className="text-sm text-zinc-300 text-right">
                                                         <p className={`px-3 py-1 rounded-full inline-block font-bold uppercase border ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status ? (selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)) : 'Pending'}</p>
@@ -1373,8 +1373,8 @@
                 {screen === 'checkout' && <CheckoutScreen onNavigate={handleNavigate} user={user} orderSummary={orderSummary} placeOrder={placeOrder} />}
                 {screen === 'orders' && <OrderHistoryScreen user={user} onNavigate={handleNavigate} cartItemCount={cartItems.length} />}
                 {screen === 'profile' && <ProfileScreen user={user} onNavigate={handleNavigate} onLogout={() => supabase.auth.signOut()} cartItemCount={cartItems.length} />}
-                {screen === 'login' && <LoginScreen onNavigate={handleNavigate} onLogin={() => {}} />}
-                {screen === 'signup' && <SignupScreen onNavigate={handleNavigate} onSignup={() => {}} />}
+                {screen === 'login' && <LoginScreen onNavigate={handleNavigate} onLogin={() => { setScreen('home'); }} />}
+                {screen === 'signup' && <SignupScreen onNavigate={handleNavigate} onSignup={() => { setScreen('home'); }} />}
                 {screen === 'about' && <AboutScreen onNavigate={handleNavigate} user={user} cartItemCount={cartItems.length} />}
                 <MessageModal message={message?.message} type={message?.type} onClose={() => setMessage(null)} />
             </div>
