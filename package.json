@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run lint && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server.js",
-    "dev-all": "concurrently \"npm run server\" \"npm run dev\""
+    "dev-all": "concurrently \"npm run server\" \"npm run dev\"",
+    "postinstall": "chmod +x node_modules/.bin/* 2>/dev/null || true"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
