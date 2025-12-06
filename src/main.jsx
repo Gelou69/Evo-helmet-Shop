@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Admin from './admin/admin.jsx';
 import User from './user/user.jsx';
 import "tailwindcss";
 
 // Multi-page LoadingScreen component
-function LoadingScreen() {
+function LoadingScreen({ onComplete }) {
 	const [currentPage, setCurrentPage] = React.useState(0);
 
 	const pages = [
@@ -34,7 +34,7 @@ function LoadingScreen() {
 	};
 
 	const handleOrderNow = () => {
-		window.location.href = '/';
+		onComplete();
 	};
 
 	return (
@@ -89,11 +89,12 @@ function LoadingScreen() {
 function MainApp() {
 	const [loading, setLoading] = React.useState(true);
 
-	// Loading screen will stay until user clicks "Order Now"
-	// No automatic timeout
+	const handleLoadingComplete = () => {
+		setLoading(false);
+	};
 
 	if (loading) {
-		return <LoadingScreen />;
+		return <LoadingScreen onComplete={handleLoadingComplete} />;
 	}
 
 	return (
