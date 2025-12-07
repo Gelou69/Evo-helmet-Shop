@@ -667,140 +667,148 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
     };
 
     // --- CHECKOUT SCREEN ---
-    const CheckoutScreen = ({ onNavigate, user, orderSummary, placeOrder }) => {
-        const [profile, setProfile] = useState(null);
-        const [loading, setLoading] = useState(true);
-        const [selectedPayment, setSelectedPayment] = useState('COD');
-        const itemsToCheckout = orderSummary?.selectedItems || [];
+   const CheckoutScreen = ({ onNavigate, user, orderSummary, placeOrder }) => {
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [selectedPayment, setSelectedPayment] = useState('COD');
+    const itemsToCheckout = orderSummary?.selectedItems || [];
 
-        useEffect(() => {
-            const fetchProfile = async () => {
-                if (!supabase || !user) { setLoading(false); return; }
-                try {
-                    const { data, error } = await supabase.from('profiles').select('full_name, address, phone').eq('id', user.id).single();
-                    if (error) throw error;
-                    setProfile(data);
-                } catch (error) {
-                    console.error("Error fetching profile:", error.message);
-                } finally { setLoading(false); }
-            };
-            fetchProfile();
-        }, [user]);
-        
-        if (loading) return <div className="flex h-full bg-black items-center justify-center"><Loader className="w-10 h-10" /></div>;
-        const isAddressMissing = !profile || !profile.address;
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (!supabase || !user) { setLoading(false); return; }
+            try {
+                const { data, error } = await supabase.from('profiles').select('full_name, address, phone').eq('id', user.id).single();
+                if (error) throw error;
+                setProfile(data);
+            } catch (error) {
+                console.error("Error fetching profile:", error.message);
+            } finally { setLoading(false); }
+        };
+        fetchProfile();
+    }, [user]);
+    
+    if (loading) return <div className="flex h-full bg-black items-center justify-center"><Loader className="w-10 h-10" /></div>;
+    const isAddressMissing = !profile || !profile.address;
 
-        return (
-            <div className="flex flex-col h-full bg-black text-white">
-                <div className="p-4 flex items-center bg-zinc-900/50 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-10">
-                    <button onClick={() => onNavigate('cart')} className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 transition"><ArrowLeft className="w-5 h-5" /></button>
-                    <h1 className="text-lg font-black uppercase tracking-widest ml-4">Checkout</h1>
+    return (
+        <div className="flex flex-col h-full bg-black text-white">
+            <div className="p-4 flex items-center bg-zinc-900/50 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-10">
+                <button onClick={() => onNavigate('cart')} className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 transition"><ArrowLeft className="w-5 h-5" /></button>
+                <h1 className="text-lg font-black uppercase tracking-widest ml-4">Checkout</h1>
+            </div>
+
+            <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6">
+                {/* Address Card */}
+                {/* ... (Address Card content remains the same) ... */}
+                <div className={`p-6 rounded-2xl border ${isAddressMissing ? 'bg-red-950/20 border-red-900' : 'bg-zinc-900/50 border-yellow-500/50'}`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-sm font-extrabold uppercase tracking-wider flex items-center text-zinc-300"><MapPin className="w-4 h-4 mr-2 text-yellow-500" /> Shipping Details</h2>
+                        <button onClick={() => onNavigate('profile')} className="text-xs font-bold text-yellow-500 hover:underline uppercase">
+                            {isAddressMissing ? 'Add Address' : 'Change'}
+                        </button>
+                    </div>
+                    {isAddressMissing ? (
+                        <p className="text-red-400 text-sm font-medium flex items-center"><Icon className="w-4 h-4 mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></Icon> Delivery address required.</p>
+                    ) : (
+                        <div className="space-y-1">
+                            <p className="font-bold text-white text-lg">{profile.full_name}</p>
+                            <p className="text-zinc-400">{profile.phone}</p>
+                            <p className="text-zinc-300 leading-relaxed">{profile.address}</p>
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6">
-                    {/* Address Card */}
-                    <div className={`p-6 rounded-2xl border ${isAddressMissing ? 'bg-red-950/20 border-red-900' : 'bg-zinc-900/50 border-yellow-500/50'}`}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-sm font-extrabold uppercase tracking-wider flex items-center text-zinc-300"><MapPin className="w-4 h-4 mr-2 text-yellow-500" /> Shipping Details</h2>
-                            <button onClick={() => onNavigate('profile')} className="text-xs font-bold text-yellow-500 hover:underline uppercase">
-                                {isAddressMissing ? 'Add Address' : 'Change'}
-                            </button>
-                        </div>
-                        {isAddressMissing ? (
-                            <p className="text-red-400 text-sm font-medium flex items-center"><Icon className="w-4 h-4 mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></Icon> Delivery address required.</p>
-                        ) : (
-                            <div className="space-y-1">
-                                <p className="font-bold text-white text-lg">{profile.full_name}</p>
-                                <p className="text-zinc-400">{profile.phone}</p>
-                                <p className="text-zinc-300 leading-relaxed">{profile.address}</p>
+                {/* Order Items */}
+                {/* ... (Order Items content remains the same) ... */}
+                <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 bg-zinc-900/80 border-b border-zinc-800">
+                        <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-300">Order Items ({itemsToCheckout.length})</h2>
+                    </div>
+                    <div className="divide-y divide-zinc-800/50">
+                        {itemsToCheckout.map(item => (
+                            <div key={`${item.product_id}-${item.size}`} className="p-4 flex items-center">
+                                <img 
+                                    src={getPublicProductImageUrl(item.products?.image_path)} 
+                                    alt={item.products.name} 
+                                    className="w-16 h-16 object-contain bg-zinc-950 rounded-lg border border-zinc-800 p-1" 
+                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/150x150/111/333?text=IMG"; }}
+                                />
+                                <div className="ml-4 flex-1">
+                                    <p className="font-bold text-white line-clamp-1">{item.products.name}</p>
+                                    <p className="text-xs text-zinc-400 mt-1">Size: <span className="text-yellow-500">{item.size}</span> | Qty: {item.quantity}</p>
+                                </div>
+                                <p className="font-bold text-zinc-300">₱{(item.products.price * item.quantity).toLocaleString()}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Payment Method */}
+                <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6">
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-300 mb-4 flex items-center"><DollarSign className="w-4 h-4 mr-2 text-yellow-500" /> Payment</h2>
+                    <div className="space-y-3">
+                        <label className={`flex items-center p-4 rounded-xl border transition-all cursor-pointer ${selectedPayment === 'COD' ? 'bg-yellow-500/10 border-yellow-500' : 'bg-zinc-900 border-zinc-800'}`}>
+                            <input type="radio" name="payment" value="COD" checked={selectedPayment === 'COD'} onChange={() => setSelectedPayment('COD')} className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 bg-zinc-800 border-zinc-600" />
+                            <span className="ml-3 font-bold">Cash on Delivery</span>
+                        </label>
+
+                        <label className={`flex items-center p-4 rounded-xl border transition-all cursor-pointer ${selectedPayment === 'CARD' ? 'bg-yellow-500/10 border-yellow-500' : 'bg-zinc-900 border-zinc-800'}`}>
+                            <input type="radio" name="payment" value="CARD" checked={selectedPayment === 'CARD'} onChange={() => setSelectedPayment('CARD')} className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 bg-zinc-800 border-zinc-600" />
+                            <span className="ml-3 font-bold">Pay with Card (Stripe)</span>
+                        </label>
+
+                        {selectedPayment === 'CARD' && (
+                            <div className="mt-4">
+                                {import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? (
+                                    <Elements stripe={stripePromise}>
+                                        <PaymentForm 
+                                            // 💡 FIX: Using orderSummary.totalAmount (or total) instead of orderSummary.total
+                                            amount={orderSummary.totalAmount || orderSummary.total} 
+                                            onSuccess={async (paymentIntent) => {
+                                                const addr = profile?.address || '';
+                                                const normalizedStatus = paymentIntent?.status === 'succeeded' ? 'paid' : (paymentIntent?.status || null);
+                                                // 💡 FIX: Ensure placeOrder is called with the correct total amount
+                                                const orderCreated = await placeOrder(orderSummary.totalAmount || orderSummary.total, addr, 'CARD', orderSummary.selectedItems, paymentIntent.id, normalizedStatus);
+                                                if (orderCreated) onNavigate('orders');
+                                            }} 
+                                            onError={(msg) => onNavigate('message', { message: msg, type: 'error' })} 
+                                            onProcessing={() => {}} 
+                                        />
+                                    </Elements>
+                                ) : (
+                                    <p className="text-sm text-red-400">Stripe publishable key is not configured. Set `VITE_STRIPE_PUBLISHABLE_KEY` in your .env.</p>
+                                )}
                             </div>
                         )}
                     </div>
-
-                    {/* Order Items */}
-                    <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl overflow-hidden">
-                        <div className="px-6 py-4 bg-zinc-900/80 border-b border-zinc-800">
-                            <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-300">Order Items ({itemsToCheckout.length})</h2>
-                        </div>
-                        <div className="divide-y divide-zinc-800/50">
-                            {itemsToCheckout.map(item => (
-                                <div key={`${item.product_id}-${item.size}`} className="p-4 flex items-center">
-                                    <img 
-                                        src={getPublicProductImageUrl(item.products?.image_path)} 
-                                        alt={item.products.name} 
-                                        className="w-16 h-16 object-contain bg-zinc-950 rounded-lg border border-zinc-800 p-1" 
-                                        onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/150x150/111/333?text=IMG"; }}
-                                    />
-                                    <div className="ml-4 flex-1">
-                                        <p className="font-bold text-white line-clamp-1">{item.products.name}</p>
-                                        <p className="text-xs text-zinc-400 mt-1">Size: <span className="text-yellow-500">{item.size}</span> | Qty: {item.quantity}</p>
-                                    </div>
-                                    <p className="font-bold text-zinc-300">₱{(item.products.price * item.quantity).toLocaleString()}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Payment Method */}
-                    <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6">
-                        <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-300 mb-4 flex items-center"><DollarSign className="w-4 h-4 mr-2 text-yellow-500" /> Payment</h2>
-                        <div className="space-y-3">
-                            <label className={`flex items-center p-4 rounded-xl border transition-all cursor-pointer ${selectedPayment === 'COD' ? 'bg-yellow-500/10 border-yellow-500' : 'bg-zinc-900 border-zinc-800'}`}>
-                                <input type="radio" name="payment" value="COD" checked={selectedPayment === 'COD'} onChange={() => setSelectedPayment('COD')} className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 bg-zinc-800 border-zinc-600" />
-                                <span className="ml-3 font-bold">Cash on Delivery</span>
-                            </label>
-
-                            <label className={`flex items-center p-4 rounded-xl border transition-all cursor-pointer ${selectedPayment === 'CARD' ? 'bg-yellow-500/10 border-yellow-500' : 'bg-zinc-900 border-zinc-800'}`}>
-                                <input type="radio" name="payment" value="CARD" checked={selectedPayment === 'CARD'} onChange={() => setSelectedPayment('CARD')} className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 bg-zinc-800 border-zinc-600" />
-                                <span className="ml-3 font-bold">Pay with Card (Stripe)</span>
-                            </label>
-
-                            {selectedPayment === 'CARD' && (
-                                <div className="mt-4">
-                                    {import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? (
-                                        <Elements stripe={stripePromise}>
-                                            <PaymentForm amount={orderSummary.total} onSuccess={async (paymentIntent) => {
-                                                const addr = profile?.address || '';
-                                                const normalizedStatus = paymentIntent?.status === 'succeeded' ? 'paid' : (paymentIntent?.status || null);
-                                                const orderCreated = await placeOrder(orderSummary.total, addr, 'CARD', orderSummary.selectedItems, paymentIntent.id, normalizedStatus);
-                                                if (orderCreated) onNavigate('orders');
-                                            }} onError={(msg) => onNavigate('message', { message: msg, type: 'error' })} onProcessing={() => {}} />
-                                        </Elements>
-                                    ) : (
-                                        <p className="text-sm text-red-400">Stripe publishable key is not configured. Set `VITE_STRIPE_PUBLISHABLE_KEY` in your .env.</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-6 bg-zinc-900/90 backdrop-blur-md border-t border-zinc-800 safe-bottom">
-                    <div className="flex justify-between items-center mb-6">
-                        <span className="text-zinc-400 font-medium">Total Payment</span>
-                        <span className="text-2xl font-black text-yellow-500">₱{orderSummary.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    {selectedPayment === 'COD' ? (
-                        <button
-                            onClick={async () => {
-                                const success = await placeOrder(orderSummary.total, profile.address, selectedPayment, itemsToCheckout);
-                                if (success) onNavigate('orders');
-                            }}
-                            disabled={isAddressMissing || itemsToCheckout.length === 0}
-                            className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all ${isAddressMissing ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400 active:scale-95'}`}
-                        >
-                            {isAddressMissing ? 'Add Address to Continue' : 'Place Order'}
-                        </button>
-                    ) : (
-                        <button disabled className="w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm bg-zinc-800 text-zinc-500 cursor-not-allowed">
-                            Complete payment using card form above
-                        </button>
-                    )}
                 </div>
             </div>
-        );
-    };
 
+            <div className="p-6 bg-zinc-900/90 backdrop-blur-md border-t border-zinc-800 safe-bottom">
+                <div className="flex justify-between items-center mb-6">
+                    <span className="text-zinc-400 font-medium">Total Payment</span>
+                    <span className="text-2xl font-black text-yellow-500">₱{orderSummary.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                {selectedPayment === 'COD' ? (
+                    <button
+                        onClick={async () => {
+                            const success = await placeOrder(orderSummary.total, profile.address, selectedPayment, itemsToCheckout);
+                            if (success) onNavigate('orders');
+                        }}
+                        disabled={isAddressMissing || itemsToCheckout.length === 0}
+                        className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all ${isAddressMissing ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400 active:scale-95'}`}
+                    >
+                        {isAddressMissing ? 'Add Address to Continue' : 'Place Order'}
+                    </button>
+                ) : (
+                    <button disabled={isAddressMissing} className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all ${isAddressMissing ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500/20 text-yellow-400 cursor-default'}`}>
+                        {isAddressMissing ? 'Add Address to Continue' : 'Complete payment using card form above'}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
     // --- ORDER HISTORY SCREEN ---
     const OrderHistoryScreen = ({ user, onNavigate, cartItemCount }) => {
         const [orders, setOrders] = useState([]);
