@@ -590,127 +590,82 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
     };
 
     // --- PAYMENT FORM (Stripe Elements) ---
-  const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
-   // Ensure backendBase is defined, usually:
-// const backendBase = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'; 
-// (or VITE_BACKEND_URL, based on your setup)
+    const PaymentForm = ({ amount, onSuccess, onError, onProcessing }) => {
+        const stripe = useStripe();
+        const elements = useElements();
+        const [cardReady, setCardReady] = useState(false);
+        const [processing, setProcessing] = useState(false);
 
-const PaymentForm = ({ amount, onSuccess, onError, onProcessing }) => {
-    const stripe = useStripe();
-    const elements = useElements();
-    const [cardReady, setCardReady] = useState(false);
-    const [processing, setProcessing] = useState(false);
+        useEffect(() => {
+            let mounted = true;
+            // Poll briefly until the CardElement is available (Stripe Elements mounts asynchronously)
+            const check = () => {
+                try {
+                    const el = elements && elements.getElement && elements.getElement(CardElement);
+                    if (mounted && !!el) setCardReady(true);
+                } catch (e) {
+                    // ignore
+                }
+            };
+            check();
+            const id = setInterval(check, 250);
+            return () => { mounted = false; clearInterval(id); };
+        }, [elements]);
 
-    useEffect(() => {
-        let mounted = true;
-        // Poll briefly until the CardElement is available (Stripe Elements mounts asynchronously)
-        const check = () => {
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            if (!stripe || !elements) return onError('Stripe not loaded');
+            const card = elements.getElement(CardElement);
+            if (!card) return onError('Card input not found. Please refresh the page and try again.');
+            setProcessing(true);
+            onProcessing(true);
             try {
-                const el = elements && elements.getElement && elements.getElement(CardElement);
-                if (mounted && !!el) setCardReady(true);
-            } catch (e) {
-                // ignore
+                const res = await fetch(`${backendBase}/create-payment-intent`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount })
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `Server error: ${res.status}`);
+                }
+                const data = await res.json();
+                const clientSecret = data.clientSecret || data.client_secret;
+                if (!clientSecret) throw new Error('Payment initialization failed (missing client secret)');
+                const card = elements.getElement(CardElement);
+                if (!card) throw new Error('Card input not found');
+
+                const confirm = await stripe.confirmCardPayment(clientSecret, { payment_method: { card } });
+
+                if (confirm.error) throw confirm.error;
+                if (confirm.paymentIntent && confirm.paymentIntent.status === 'succeeded') {
+                    onSuccess(confirm.paymentIntent);
+                } else {
+                    throw new Error('Payment not completed. Status: ' + (confirm.paymentIntent?.status || 'unknown'));
+                }
+            } catch (err) {
+                onError(err.message || 'Payment failed');
+            } finally {
+                setProcessing(false);
+                onProcessing(false);
             }
         };
-        check();
-        const id = setInterval(check, 250);
-        return () => { mounted = false; clearInterval(id); };
-    }, [elements]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!stripe || !elements) return onError('Stripe not loaded');
-        const card = elements.getElement(CardElement);
-        if (!card) return onError('Card input not found. Please refresh the page and try again.');
-        
-        setProcessing(true);
-        onProcessing(true);
-
-        try {
-            // --- STEP 1: Create a fresh PaymentMethod ID on the client ---
-            const { paymentMethod, error: createPMError } = await stripe.createPaymentMethod({
-                type: 'card',
-                card: card,
-            });
-
-            if (createPMError) {
-                throw createPMError;
-            }
-
-            const paymentMethodId = paymentMethod.id;
-            
-            // --- STEP 2: Call backend to create Payment Intent ---
-            // We assume this endpoint now returns 'paymentIntentId' along with 'clientSecret'
-            const piRes = await fetch(`${backendBase}/create-payment-intent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount })
-            });
-
-            if (!piRes.ok) {
-                const body = await piRes.json().catch(() => ({}));
-                throw new Error(body.error || `Server error: ${piRes.status}`);
-            }
-
-            const piData = await piRes.json();
-            const paymentIntentId = piData.paymentIntentId || piData.id; // Get the PI ID
-            
-            if (!paymentIntentId) {
-                throw new Error('Payment initialization failed (missing payment intent ID)');
-            }
-
-            // --- STEP 3: Send Payment Intent ID and NEW Payment Method ID to backend for confirmation ---
-            const confirmRes = await fetch(`${backendBase}/confirm-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paymentIntentId, paymentMethodId }) // <-- Fresh ID used here
-            });
-            
-            const confirmData = await confirmRes.json();
-
-            if (confirmData.success) {
-                // Success is handled by the server response
-                onSuccess(confirmData.paymentIntent);
-            } else {
-                // If confirmation failed, check for required actions (like 3D Secure)
-                if (confirmData.paymentIntent && confirmData.paymentIntent.status === 'requires_action') {
-                    // Handle 3D Secure or other required actions client-side
-                    const { error: actionError, paymentIntent: finalIntent } = await stripe.handleCardAction(confirmData.paymentIntent.client_secret);
-                    
-                    if (actionError) throw actionError;
-                    
-                    if (finalIntent.status === 'succeeded') {
-                        onSuccess(finalIntent);
-                    } else {
-                        throw new Error(`Payment action failed. Status: ${finalIntent.status}`);
-                    }
-                } else {
-                    // Handle generic failure message from backend
-                    throw new Error(confirmData.message || 'Payment confirmation failed');
-                }
-            }
-
-        } catch (err) {
-            onError(err.message || 'Payment failed');
-        } finally {
-            setProcessing(false);
-            onProcessing(false);
-        }
+        return (
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="p-4 bg-zinc-900/20 border border-zinc-800 rounded-xl">
+                    <CardElement options={{ hidePostalCode: true, style: { base: { color: '#fff', '::placeholder': { color: '#9CA3AF' } } } }} />
+                </div>
+                <button type="submit" disabled={!cardReady || processing} className={`w-full py-3 rounded-xl font-black uppercase tracking-widest ${(!cardReady || processing) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}>
+                    {processing ? 'Processing…' : `Pay ₱${amount.toFixed(2)}`}
+                </button>
+                {!cardReady && <p className="text-xs text-zinc-400 mt-2">Card input loading — please wait a moment.</p>}
+            </form>
+        );
     };
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="p-4 bg-zinc-900/20 border border-zinc-800 rounded-xl">
-                <CardElement options={{ hidePostalCode: true, style: { base: { color: '#fff', '::placeholder': { color: '#9CA3AF' } } } }} />
-            </div>
-            <button type="submit" disabled={!cardReady || processing} className={`w-full py-3 rounded-xl font-black uppercase tracking-widest ${(!cardReady || processing) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}>
-                {processing ? 'Processing…' : `Pay ₱${amount.toFixed(2)}`}
-            </button>
-            {!cardReady && <p className="text-xs text-zinc-400 mt-2">Card input loading — please wait a moment.</p>}
-        </form>
-    );
-};
     // --- CHECKOUT SCREEN ---
     const CheckoutScreen = ({ onNavigate, user, orderSummary, placeOrder }) => {
         const [profile, setProfile] = useState(null);
@@ -1347,9 +1302,6 @@ const PaymentForm = ({ amount, onSuccess, onError, onProcessing }) => {
       // ... (Keep the existing code above this function)
 
 // 1. You must change the function signature to accept the clientSecret
-// ... (Keep the existing code above this function)
-
-// 1. You must change the function signature to accept the clientSecret
 const placeOrder = async (total, address, payment, items, clientSecret) => {
     // Variable for the backend URL (fix for "Failed to fetch")
     // NOTE: This relies on you creating the .env file with VITE_SERVER_URL=http://localhost:3001
@@ -1455,7 +1407,6 @@ const placeOrder = async (total, address, payment, items, clientSecret) => {
     }
 };
 
-// ... (Keep the rest of the file)
 // ... (Keep the rest of the file)
 
         useEffect(() => {
