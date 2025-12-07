@@ -1306,7 +1306,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
 const placeOrder = async (total, address, payment, items, clientSecret, stripe) => {
     // Variable for the backend URL (fix for "Failed to fetch")
     // NOTE: This relies on you creating the .env file with VITE_SERVER_URL=http://localhost:3001
-    const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+// NEW CODE: Reads VITE_BACKEND_URL, which you defined
+const SERVER_URL = import.meta.env.VITE_BACKEND_URL;
     if (!SERVER_URL) {
         handleNavigate('message', { message: 'Configuration Error: VITE_SERVER_URL is missing.', type: 'error' });
         return false;
