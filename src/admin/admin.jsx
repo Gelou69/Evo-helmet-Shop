@@ -86,7 +86,6 @@ function App() {
   // Order statuses state
   const [orderStatus, setOrderStatus] = useState({
     pending: true,
-    paid: true,
     processing: false,
     shipped: false,
     delivered: false,
@@ -357,11 +356,7 @@ function App() {
 
   const filteredOrders = orders.filter(order => {
     if (filterStatus === 'All') return true;
-    if (filterStatus === 'Pending') return order.status === 'Pending';
-    if (filterStatus === 'Shipped') return order.status === 'Shipped';
-    if (filterStatus === 'Delivered') return order.status === 'Delivered';
-    if (filterStatus === 'Cancelled') return order.status === 'Cancelled';
-    return order.status === 'Processing';
+    return order.status === filterStatus;
   });
 
   const handleFilterChange = (event) => {
@@ -369,11 +364,8 @@ function App() {
   };
 
   const handleStatusChange = (status) => {
-    if (status === 'Paid') {
-        setOrderStatus(prev => ({ ...prev, paid: true }));
-    } else {
-        setOrderStatus(prev => ({ ...prev, [status]: !prev[status] }));
-    }
+    const key = String(status).toLowerCase();
+    setOrderStatus(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handlePaymentChange = (event) => {
@@ -383,7 +375,6 @@ function App() {
   const renderOrderStatus = () => {
     return (
         <div>
-            <p>Status: {orderStatus.paid ? 'Paid' : 'Not Paid'}</p>
             <p>Status: {orderStatus.pending ? 'Pending' : 'Not Pending'}</p>
             <p>Status: {orderStatus.processing ? 'Processing' : 'Not Processing'}</p>
             <p>Status: {orderStatus.shipped ? 'Shipped' : 'Not Shipped'}</p>
@@ -545,15 +536,15 @@ function App() {
             <hr/>
 
             {/* ⭐ NEW: Filter by Status Dropdown */}
-            <label>Filter by Status:</label>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value='All'>All</option>
-              <option value='Pending'>Pending</option>
-              <option value='Paid'>Paid</option>
-              <option value='Shipped'>Shipped</option>
-              <option value='Delivered'>Delivered</option>
-              <option value='Cancelled'>Cancelled</option>
-            </select>
+                <label>Filter by Status:</label>
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value='All'>All</option>
+                  <option value='Pending'>Pending</option>
+                  <option value='Processing'>Processing</option>
+                  <option value='Shipped'>Shipped</option>
+                  <option value='Delivered'>Delivered</option>
+                  <option value='Cancelled'>Cancelled</option>
+                </select>
 
             {filteredOrders.length > 0 ? (
               <div className="table-container">
