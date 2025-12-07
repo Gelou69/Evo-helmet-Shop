@@ -206,9 +206,17 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
         
         <div className="flex items-center space-x-3">
             {isLoggedIn ? (
-            <button onClick={() => onNavigate('profile')} className="hidden sm:block text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-full transition border border-zinc-700">
-                {displayName}
-            </button>
+            <>
+                {/* Mobile: small profile icon */}
+                <button onClick={() => onNavigate('profile')} className="sm:hidden p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition flex items-center justify-center border border-zinc-800">
+                    <User className="w-5 h-5 text-yellow-500" />
+                </button>
+
+                {/* Desktop / larger screens: show username as before */}
+                <button onClick={() => onNavigate('profile')} className="hidden sm:block text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-full transition border border-zinc-700">
+                    {displayName}
+                </button>
+            </>
             ) : (
             <button onClick={() => onNavigate('login')} className="text-black bg-yellow-500 hover:bg-yellow-400 px-5 py-2 rounded-full text-xs font-bold uppercase transition shadow-lg shadow-yellow-500/10">
                 Login
