@@ -590,7 +590,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
     };
 
     // --- PAYMENT FORM (Stripe Elements) ---
-    const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+  const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
     const PaymentForm = ({ amount, onSuccess, onError, onProcessing }) => {
         const stripe = useStripe();
