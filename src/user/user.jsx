@@ -1307,119 +1307,86 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
             setSelectedCartItems(prev => prev.some(i => i.product_id === pid && i.size === size) ? prev.filter(i => !(i.product_id === pid && i.size === size)) : [...prev, item]);
         };
 
+        // Place order (moved inside App so it can access `user`, `handleNavigate`, and `supabase`)
+        const placeOrder = async (total, address, payment, items, clientSecret = null, paymentStatusOverride = null) => {
+            const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+            if (!SERVER_URL) {
+                handleNavigate('message', { message: 'Configuration Error: VITE_SERVER_URL is missing.', type: 'error' });
+                return false;
+            }
+
+            let paymentIntentId = null;
+            let paymentStatus = null;
+            let computedStatus = 'pending';
+
+            try {
+                // If we have a clientSecret (from Stripe), attempt server-side confirmation
+                if (clientSecret) {
+                    // Allow caller to pass a paymentStatusOverride (normalized status string)
+                    if (paymentStatusOverride) {
+                        paymentStatus = paymentStatusOverride;
+                    } else {
+                        // Call backend to confirm the payment intent (backend expected to return { success, paymentIntent })
+                        const confirmResponse = await fetch(`${SERVER_URL}/confirm-payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ paymentIntentClientSecret: clientSecret })
+                        });
+                        const confirmData = await confirmResponse.json().catch(() => ({}));
+                        if (!confirmResponse.ok || !confirmData.success) {
+                            throw new Error(confirmData.message || 'Payment confirmation failed on server.');
+                        }
+                        const pi = confirmData.paymentIntent || confirmData.payment_intent || {};
+                        paymentIntentId = pi.id || null;
+                        paymentStatus = pi.status || null;
+                    }
+                }
+
+                const normalizedPaymentStatus = paymentStatusOverride || (paymentStatus ? String(paymentStatus).toLowerCase() : null);
+                if (normalizedPaymentStatus === 'succeeded' || normalizedPaymentStatus === 'paid') computedStatus = 'paid';
+
+                const basePayload = {
+                    user_id: user?.id || null,
+                    total_amount: total,
+                    shipping_address: address,
+                    payment_method: payment,
+                    status: computedStatus
+                };
+                if (paymentIntentId) basePayload.payment_intent_id = paymentIntentId;
+                if (normalizedPaymentStatus) basePayload.payment_status = normalizedPaymentStatus;
+
+                const tryInsertOrder = async (payload) => {
+                    const { data, error } = await supabase.from('orders').insert(payload).select().single();
+                    return { data, error };
+                };
+
+                let { data: order, error: oErr } = await tryInsertOrder(basePayload);
+                if (oErr && /payment_intent_id|payment_status|column .* does not exist/i.test(oErr.message || '')) {
+                    const safePayload = { ...basePayload };
+                    delete safePayload.payment_intent_id;
+                    delete safePayload.payment_status;
+                    const retry = await tryInsertOrder(safePayload);
+                    order = retry.data;
+                    oErr = retry.error;
+                }
+
+                if (oErr) throw oErr;
+
+                const { error: iErr } = await supabase.from('order_items').insert(items.map(i => ({ order_id: order.id, product_id: i.product_id, quantity: i.quantity, product_size: i.size, price_at_purchase: i.products.price })));
+                if (iErr) throw iErr;
+
+                await Promise.all(items.map(i => supabase.from('cart_items').delete().match({ user_id: user.id, product_id: i.product_id, size: i.size })));
+                await fetchCart(user.id);
+                handleNavigate('message', { message: 'Payment successful and order placed!', type: 'success' });
+                return true;
+            } catch (e) {
+                console.error('Order or Payment Failure:', e);
+                handleNavigate('message', { message: e.message || 'Payment failed or order could not be placed.', type: 'error' });
+                return false;
+            }
+        };
+
       // ... (Keep the existing code above this function)
-
-// 1. You must change the function signature to accept the clientSecret
-// ... (Keep the existing code above this function)
-
-// 1. You must change the function signature to accept the clientSecret
-const placeOrder = async (total, address, payment, items, clientSecret) => {
-    // Variable for the backend URL (fix for "Failed to fetch")
-    // NOTE: This relies on you creating the .env file with VITE_SERVER_URL=http://localhost:3001
-    const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-    if (!SERVER_URL) {
-        handleNavigate('message', { message: 'Configuration Error: VITE_SERVER_URL is missing.', type: 'error' });
-        return false;
-    }
-    
-    let paymentIntentId = null;
-    let paymentStatus = null;
-    let computedStatus = 'pending';
-    
-    try {
-        // ====================================================
-        // A. Confirm Payment with Stripe
-        // ====================================================
-
-        // 2. Extract PaymentMethod ID from the client secret to use in the backend
-        const last4 = clientSecret.substring(clientSecret.length - 4);
-        // Assuming the payment method for this flow is the one used to create the intent
-        const paymentMethodId = `pm_card_${last4}`; // This is a safe assumption for this flow
-
-        // 3. Call your backend server to confirm the payment
-        const confirmResponse = await fetch(`${SERVER_URL}/confirm-payment`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                paymentIntentId: clientSecret, // clientSecret acts as the PI ID
-                paymentMethodId: paymentMethodId,
-            }),
-        });
-
-        const confirmData = await confirmResponse.json();
-
-        if (!confirmResponse.ok || !confirmData.success) {
-            // Handle cases where the payment confirmation failed on the server
-            throw new Error(confirmData.message || "Payment confirmation failed.");
-        }
-
-        // 4. Update the payment variables based on the successful response
-        const paymentIntent = confirmData.paymentIntent;
-        paymentIntentId = paymentIntent.id;
-        paymentStatus = paymentIntent.status;
-
-        // ====================================================
-        // B. Save Order to Supabase (Existing Logic)
-        // ====================================================
-        
-        // Normalize incoming payment status and set a canonical order status (lowercase)
-        const normalizedPaymentStatus = paymentStatus ? String(paymentStatus).toLowerCase() : null;
-        
-        if (normalizedPaymentStatus === 'succeeded' || normalizedPaymentStatus === 'paid') computedStatus = 'paid';
-        // Allow callers to override via payment method if appropriate (e.g., COD should remain 'pending')
-
-        // Build the order payload
-        const basePayload = {
-            user_id: user.id,
-            total_amount: total,
-            shipping_address: address,
-            payment_method: payment,
-            status: computedStatus
-        };
-        // Use the IDs and status received from Stripe
-        if (paymentIntentId) basePayload.payment_intent_id = paymentIntentId;
-        if (normalizedPaymentStatus) basePayload.payment_status = normalizedPaymentStatus;
-
-        // Helper to attempt insert and optionally retry without Stripe fields if schema lacks them
-        const tryInsertOrder = async (payload) => {
-            const { data, error } = await supabase.from('orders').insert(payload).select().single();
-            return { data, error };
-        };
-
-        // First attempt: try inserting full payload
-        let { data: order, error: oErr } = await tryInsertOrder(basePayload);
-
-        // If the DB reports missing column(s) for payment fields, retry without them
-        if (oErr && /payment_intent_id|payment_status|column .* does not exist/i.test(oErr.message || '')) {
-            const safePayload = { ...basePayload };
-            delete safePayload.payment_intent_id;
-            delete safePayload.payment_status;
-            const retry = await tryInsertOrder(safePayload);
-            order = retry.data;
-            oErr = retry.error;
-        }
-
-        if (oErr) throw oErr;
-
-        const { error: iErr } = await supabase.from('order_items').insert(items.map(i => ({ order_id: order.id, product_id: i.product_id, quantity: i.quantity, product_size: i.size, price_at_purchase: i.products.price })));
-        if (iErr) throw iErr;
-
-        await Promise.all(items.map(i => supabase.from('cart_items').delete().match({ user_id: user.id, product_id: i.product_id, size: i.size })));
-        await fetchCart(user.id);
-        handleNavigate('message', { message: 'Payment successful and order placed!', type: 'success' });
-        return true;
-    } catch (e) {
-        // If an error occurred in either Stripe confirmation or Supabase insertion
-        console.error("Order or Payment Failure:", e);
-        handleNavigate('message', { message: e.message || 'Payment failed or order could not be placed.', type: 'error' });
-        return false;
-    }
-};
-
-// ... (Keep the rest of the file)
-// ... (Keep the rest of the file)
 
         useEffect(() => {
             if (!supabase) { setScreen('home'); return; }
