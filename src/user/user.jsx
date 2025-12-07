@@ -1436,8 +1436,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement } from '@
                 {screen === 'checkout' && <CheckoutScreen onNavigate={handleNavigate} user={user} orderSummary={orderSummary} placeOrder={placeOrder} />}
                 {screen === 'orders' && <OrderHistoryScreen user={user} onNavigate={handleNavigate} cartItemCount={cartItems.length} />}
                 {screen === 'profile' && <ProfileScreen user={user} onNavigate={handleNavigate} onLogout={() => supabase.auth.signOut()} cartItemCount={cartItems.length} />}
-                {screen === 'login' && <LoginScreen onNavigate={handleNavigate} onLogin={() => { setScreen('home'); }} />}
-                {screen === 'signup' && <SignupScreen onNavigate={handleNavigate} onSignup={() => { setScreen('home'); }} />}
+                {screen === 'login' && <LoginScreen onNavigate={handleNavigate} onLogin={(u) => { setUser(u); if (u && u.id) fetchCart(u.id); setScreen('home'); }} />}
+                {screen === 'signup' && <SignupScreen onNavigate={handleNavigate} onSignup={(u) => { setUser(u); if (u && u.id) fetchCart(u.id); setScreen('home'); }} />}
                 {screen === 'about' && <AboutScreen onNavigate={handleNavigate} user={user} cartItemCount={cartItems.length} />}
                 <MessageModal message={message?.message} type={message?.type} onClose={() => setMessage(null)} />
             </div>

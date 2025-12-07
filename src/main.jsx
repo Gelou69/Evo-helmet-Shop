@@ -98,10 +98,44 @@ function MainApp() {
 	// Wrapper component that injects react-router's navigate into User
 	function UserWrapper() {
 		const navigate = useNavigate();
-		const navigateTo = (path) => {
+		const navigateTo = async (path) => {
 			if (path === '/admin') {
-				// Open admin as an in-page overlay instead of navigating to /admin
-				setShowAdmin(true);
+				// Verify admin status before opening admin modal
+				try {
+					const sb = window.supabase;
+					if (!sb) {
+						// If Supabase client isn't available, fall back to opening admin (admin component will re-check)
+						setShowAdmin(true);
+						return;
+					}
+					const { data: { session } } = await sb.auth.getSession();
+					if (!session) {
+						alert('Please sign in as an admin to access this page.');
+						navigate('/login');
+						return;
+					}
+					const user = session.user;
+					const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').toLowerCase();
+					let isAdmin = false;
+					if (user?.user_metadata?.is_admin) isAdmin = true;
+					if (user?.email && user.email.toLowerCase() === adminEmail) isAdmin = true;
+					if (!isAdmin) {
+						// Check profiles table for is_admin flag
+						try {
+							const { data: profile, error } = await sb.from('profiles').select('is_admin').eq('id', user.id).single();
+							if (!error && profile && profile.is_admin) isAdmin = true;
+						} catch (e) { /* ignore */ }
+					}
+					if (isAdmin) setShowAdmin(true);
+					else {
+						alert('Access denied: Admins only.');
+						navigate('/');
+					}
+				} catch (e) {
+					console.error('Admin access check failed:', e);
+					// Fallback: do not open admin modal
+					alert('Unable to verify admin access.');
+				}
 			} else {
 				navigate(path);
 			}
