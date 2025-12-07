@@ -223,20 +223,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement } from '@
                 </button>
             )}
 
-            {/* Admin quick-link: only show for admin users */}
-            {(() => {
-                const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').toLowerCase();
-                const isAdmin = user && ((user.user_metadata && user.user_metadata.is_admin) || (user.email && user.email.toLowerCase() === adminEmail));
-                return isAdmin ? (
-                    <button
-                        onClick={() => onNavigate('admin')}
-                        title="Admin"
-                        className="hidden sm:inline-flex p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition items-center justify-center border border-zinc-800 mr-1"
-                    >
-                        <Lock className="w-5 h-5 text-zinc-400 hover:text-yellow-500 transition-colors" />
-                    </button>
-                ) : null;
-            })()}
+            {/* Admin quick-link removed to prevent non-admin access */}
 
             <div className="relative cursor-pointer group" onClick={() => onNavigate('cart')}>
                 <div className="p-2 bg-zinc-900 rounded-full border border-zinc-800 group-hover:border-yellow-500 transition-colors">
