@@ -358,7 +358,6 @@ function App() {
   const filteredOrders = orders.filter(order => {
     if (filterStatus === 'All') return true;
     if (filterStatus === 'Pending') return order.status === 'Pending';
-    if (filterStatus === 'Paid') return order.status === 'Paid';
     if (filterStatus === 'Shipped') return order.status === 'Shipped';
     if (filterStatus === 'Delivered') return order.status === 'Delivered';
     if (filterStatus === 'Cancelled') return order.status === 'Cancelled';
