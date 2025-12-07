@@ -159,8 +159,40 @@ function MainApp() {
 	);
 }
 
+// Simple Error Boundary to catch runtime errors and print useful info to the UI/console
+class ErrorBoundary extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = { hasError: false, error: null, info: null };
+	}
+	static getDerivedStateFromError(error) {
+		return { hasError: true, error };
+	}
+	componentDidCatch(error, info) {
+		console.error('Captured error in ErrorBoundary:', error, info);
+		this.setState({ info });
+	}
+	render() {
+		if (this.state.hasError) {
+			return (
+				<div style={{ padding: 20, color: 'white', background: '#111', minHeight: '100vh' }}>
+					<h1 style={{ color: '#f00' }}>Application Error</h1>
+					<pre style={{ whiteSpace: 'pre-wrap', color: '#fff' }}>{String(this.state.error && this.state.error.message)}</pre>
+					<details style={{ color: '#ddd' }}>
+						{(this.state.info && this.state.info.componentStack) || 'No component stack available.'}
+					</details>
+					<p>Open the dev console for more details. If this happens in production, run locally in dev mode to see full React error.</p>
+				</div>
+			);
+		}
+		return this.props.children;
+	}
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
 	<React.StrictMode>
-		<MainApp />
+		<ErrorBoundary>
+			<MainApp />
+		</ErrorBoundary>
 	</React.StrictMode>
 );

@@ -8,4 +8,7 @@ export default defineConfig({
     react(),
     tailwindcss(), // <--- It must be inside the array, separated by a comma
   ],
+  build: {
+    sourcemap: true
+  },
 })
