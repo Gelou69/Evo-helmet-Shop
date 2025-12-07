@@ -1410,6 +1410,8 @@ const placeOrder = async (total, address, payment, items, clientSecret) => {
     }
 };
 
+// ... (Keep the rest of the file)
+// ... (Keep the rest of the file)
 
         useEffect(() => {
             if (!supabase) { setScreen('home'); return; }
