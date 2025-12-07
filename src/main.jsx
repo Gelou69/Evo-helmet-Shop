@@ -128,7 +128,6 @@ function MainApp() {
 	}
 
 	return (
-		<>
 		<BrowserRouter>
 			<Routes>
 				{/* User Routes */}
@@ -155,9 +154,8 @@ function MainApp() {
 					} 
 				/>
 			</Routes>
+			{showAdmin && <AdminModal onClose={() => setShowAdmin(false)} />}
 		</BrowserRouter>
-		{showAdmin && <AdminModal onClose={() => setShowAdmin(false)} />}
-		</>
 	);
 }
 
