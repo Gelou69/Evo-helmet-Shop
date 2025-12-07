@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Admin from './admin/admin.jsx';
 import User from './user/user.jsx';
-import { useNavigate } from 'react-router-dom';
 import "tailwindcss";
 
 // Multi-page LoadingScreen component
