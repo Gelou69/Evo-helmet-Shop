@@ -100,13 +100,61 @@ function App() {
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      setLoading(false); 
+      const currentUser = session?.user || null;
+      // Basic admin check: allow if user has is_admin in profiles table OR matches VITE_ADMIN_EMAIL
+      let isAdmin = false;
+      const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').toLowerCase();
+      if (currentUser) {
+        const userEmail = (currentUser.email || '').toLowerCase();
+        if (adminEmail && userEmail === adminEmail) {
+          isAdmin = true;
+        } else {
+          try {
+            const { data: profile, error } = await supabase.from('profiles').select('is_admin').eq('id', currentUser.id).single();
+            if (!error && profile && profile.is_admin) isAdmin = true;
+          } catch (e) {
+            console.warn('Admin check failed:', e.message || e);
+          }
+        }
+      }
+
+      if (!isAdmin) {
+        // Deny access: sign out any non-admin user and show message
+        if (currentUser) await supabase.auth.signOut();
+        setUser(null);
+        setAuthMessage('Access denied: admin only area.');
+        setLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
+      setLoading(false);
     };
     getSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user || null;
+      if (!currentUser) {
+        setUser(null);
+        return;
+      }
+      const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').toLowerCase();
+      let isAdmin = false;
+      const userEmail = (currentUser.email || '').toLowerCase();
+      if (adminEmail && userEmail === adminEmail) isAdmin = true;
+      else {
+        try {
+          const { data: profile, error } = await supabase.from('profiles').select('is_admin').eq('id', currentUser.id).single();
+          if (!error && profile && profile.is_admin) isAdmin = true;
+        } catch (e) { console.warn('Admin listener check failed:', e.message || e); }
+      }
+      if (!isAdmin) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setAuthMessage('Access denied: admin only area.');
+      } else {
+        setUser(currentUser);
+      }
     });
 
     return () => {

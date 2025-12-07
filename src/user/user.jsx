@@ -206,40 +206,47 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement } from '@
         
         <div className="flex items-center space-x-3">
             {isLoggedIn ? (
-            <>
-                {/* Mobile: small profile icon */}
-                <button onClick={() => onNavigate('profile')} className="sm:hidden p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition flex items-center justify-center border border-zinc-800">
-                    <User className="w-5 h-5 text-yellow-500" />
-                </button>
+                <>
+                    {/* Mobile: small profile icon */}
+                    <button onClick={() => onNavigate('profile')} className="sm:hidden p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition flex items-center justify-center border border-zinc-800">
+                        <User className="w-5 h-5 text-yellow-500" />
+                    </button>
 
-                {/* Desktop / larger screens: show username as before */}
-                <button onClick={() => onNavigate('profile')} className="hidden sm:block text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-full transition border border-zinc-700">
-                    {displayName}
-                </button>
-            </>
+                    {/* Desktop / larger screens: show username as before */}
+                    <button onClick={() => onNavigate('profile')} className="hidden sm:block text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-full transition border border-zinc-700">
+                        {displayName}
+                    </button>
+                </>
             ) : (
-            <button onClick={() => onNavigate('login')} className="text-black bg-yellow-500 hover:bg-yellow-400 px-5 py-2 rounded-full text-xs font-bold uppercase transition shadow-lg shadow-yellow-500/10">
-                Login
-            </button>
+                <button onClick={() => onNavigate('login')} className="text-black bg-yellow-500 hover:bg-yellow-400 px-5 py-2 rounded-full text-xs font-bold uppercase transition shadow-lg shadow-yellow-500/10">
+                    Login
+                </button>
             )}
-            {/* Admin quick-link: goes to /admin route */}
-            <button
-                onClick={() => onNavigate('admin')}
-                title="Admin"
-                className="hidden sm:inline-flex p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition items-center justify-center border border-zinc-800 mr-1"
-            >
-                <Lock className="w-5 h-5 text-zinc-400 hover:text-yellow-500 transition-colors" />
-            </button>
+
+            {/* Admin quick-link: only show for admin users */}
+            {(() => {
+                const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').toLowerCase();
+                const isAdmin = user && ((user.user_metadata && user.user_metadata.is_admin) || (user.email && user.email.toLowerCase() === adminEmail));
+                return isAdmin ? (
+                    <button
+                        onClick={() => onNavigate('admin')}
+                        title="Admin"
+                        className="hidden sm:inline-flex p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition items-center justify-center border border-zinc-800 mr-1"
+                    >
+                        <Lock className="w-5 h-5 text-zinc-400 hover:text-yellow-500 transition-colors" />
+                    </button>
+                ) : null;
+            })()}
 
             <div className="relative cursor-pointer group" onClick={() => onNavigate('cart')}>
                 <div className="p-2 bg-zinc-900 rounded-full border border-zinc-800 group-hover:border-yellow-500 transition-colors">
                     <ShoppingCart className="w-5 h-5 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
                 </div>
-            {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-black">
-                {cartItemCount}
-                </span>
-            )}
+                {cartItemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-black">
+                        {cartItemCount}
+                    </span>
+                )}
             </div>
         </div>
         </div>
