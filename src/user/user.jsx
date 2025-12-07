@@ -1320,25 +1320,17 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
             let computedStatus = 'pending';
 
             try {
-                // If we have a clientSecret (from Stripe), attempt server-side confirmation
+                // Use the passed payment info from PaymentForm's onSuccess when available
+                // PaymentForm calls onSuccess(paymentIntent) and we pass paymentIntent.id and status here.
                 if (clientSecret) {
-                    // Allow caller to pass a paymentStatusOverride (normalized status string)
-                    if (paymentStatusOverride) {
-                        paymentStatus = paymentStatusOverride;
+                    // If the caller passed a PaymentIntent ID (starts with 'pi_'), use it directly
+                    if (typeof clientSecret === 'string' && clientSecret.startsWith && clientSecret.startsWith('pi_')) {
+                        paymentIntentId = clientSecret;
+                        paymentStatus = paymentStatusOverride || null;
                     } else {
-                        // Call backend to confirm the payment intent (backend expected to return { success, paymentIntent })
-                        const confirmResponse = await fetch(`${SERVER_URL}/confirm-payment`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ paymentIntentClientSecret: clientSecret })
-                        });
-                        const confirmData = await confirmResponse.json().catch(() => ({}));
-                        if (!confirmResponse.ok || !confirmData.success) {
-                            throw new Error(confirmData.message || 'Payment confirmation failed on server.');
-                        }
-                        const pi = confirmData.paymentIntent || confirmData.payment_intent || {};
-                        paymentIntentId = pi.id || null;
-                        paymentStatus = pi.status || null;
+                        // If an unexpected token was provided, avoid attempting to construct a PaymentMethod ID
+                        // and do not call /confirm-payment to prevent invalid PaymentMethod errors.
+                        console.warn('placeOrder: received unexpected clientSecret value; skipping server confirm call.');
                     }
                 }
 
