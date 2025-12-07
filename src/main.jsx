@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Admin from './admin/admin.jsx';
 import User from './user/user.jsx';
+import { useNavigate } from 'react-router-dom';
 import "tailwindcss";
 
 // Multi-page LoadingScreen component
@@ -97,12 +98,19 @@ function MainApp() {
 		return <LoadingScreen onComplete={handleLoadingComplete} />;
 	}
 
+	// Wrapper component that injects react-router's navigate into User
+	function UserWrapper() {
+		const navigate = useNavigate();
+		const navigateTo = (path) => navigate(path);
+		return <User navigateTo={navigateTo} />;
+	}
+
 	return (
 		<BrowserRouter>
 			<Routes>
 				{/* User Routes */}
-				<Route path="/" element={<User />} />
-				<Route path="/user" element={<User />} />
+				<Route path="/" element={<UserWrapper />} />
+				<Route path="/user" element={<UserWrapper />} />
 				{/* Admin Route */}
 				<Route path="/admin" element={<Admin />} />
 				{/* 404 Not Found */}

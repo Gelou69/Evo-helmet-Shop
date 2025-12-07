@@ -224,7 +224,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
             )}
             {/* Admin quick-link: goes to /admin route */}
             <button
-                onClick={() => { window.location.href = '/admin'; }}
+                onClick={() => onNavigate('admin')}
                 title="Admin"
                 className="hidden sm:inline-flex p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition items-center justify-center border border-zinc-800 mr-1"
             >
@@ -1279,7 +1279,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
     };
 
     // --- MAIN APP ---
-    const App = () => {
+    const App = ({ navigateTo }) => {
         const [screen, setScreen] = useState('onboarding');
         const [user, setUser] = useState(null);
         const [message, setMessage] = useState(null);
@@ -1290,6 +1290,14 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
         const handleNavigate = (s, p = {}) => { 
             if (s === 'message') setMessage(p);
             else if (s === 'checkout') { setOrderSummary(p); setScreen('checkout'); }
+            else if (s === 'admin') {
+                if (typeof navigateTo === 'function') {
+                    navigateTo('/admin');
+                } else {
+                    // Fallback to full navigation if navigateTo wasn't provided
+                    window.location.href = '/admin';
+                }
+            }
             else setScreen(s);
         };
 
