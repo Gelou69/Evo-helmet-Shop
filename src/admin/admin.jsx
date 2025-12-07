@@ -112,6 +112,13 @@ function App() {
           try {
             const { data: profile, error } = await supabase.from('profiles').select('is_admin').eq('id', currentUser.id).single();
             if (!error && profile && profile.is_admin) isAdmin = true;
+            // Also check the separate admins table for an explicit admin record
+            if (!isAdmin) {
+              try {
+                const { data: adminRec, error: adminErr } = await supabase.from('admins').select('role').eq('profile_id', currentUser.id).single();
+                if (!adminErr && adminRec) isAdmin = true;
+              } catch (ae) { /* ignore admin table lookup errors */ }
+            }
           } catch (e) {
             console.warn('Admin check failed:', e.message || e);
           }
@@ -146,6 +153,12 @@ function App() {
         try {
           const { data: profile, error } = await supabase.from('profiles').select('is_admin').eq('id', currentUser.id).single();
           if (!error && profile && profile.is_admin) isAdmin = true;
+          if (!isAdmin) {
+            try {
+              const { data: adminRec, error: adminErr } = await supabase.from('admins').select('role').eq('profile_id', currentUser.id).single();
+              if (!adminErr && adminRec) isAdmin = true;
+            } catch (ae) { /* ignore */ }
+          }
         } catch (e) { console.warn('Admin listener check failed:', e.message || e); }
       }
       if (!isAdmin) {
@@ -204,6 +217,23 @@ function App() {
           const defaultUsername = email ? String(email).split('@')[0] : null;
           const { error: profileError } = await supabase.from('profiles').insert({ id: userId, username: defaultUsername }).select();
           if (profileError) console.warn('profiles insert warning:', profileError.message || profileError);
+
+          // Also create or upsert an admins entry and set the profiles.is_admin flag
+          try {
+            // Try to insert into admins; if it fails (duplicate), attempt an update to ensure role exists
+            const { error: adminInsertErr } = await supabase.from('admins').insert({ profile_id: userId, role: 'admin' });
+            if (adminInsertErr) {
+              // Try update as fallback
+              const { error: adminUpErr } = await supabase.from('admins').update({ role: 'admin' }).eq('profile_id', userId);
+              if (adminUpErr) console.warn('admins insert/update warning:', adminUpErr.message || adminUpErr);
+            }
+
+            const { error: setAdminFlagErr } = await supabase.from('profiles').update({ is_admin: true }).eq('id', userId);
+            if (setAdminFlagErr) console.warn('profiles set is_admin warning:', setAdminFlagErr.message || setAdminFlagErr);
+          } catch (ae) {
+            console.warn('Error creating admins record after signup:', ae.message || ae);
+          }
+
         } catch (e) {
           console.warn('Error creating profile after signup:', e.message || e);
         }
