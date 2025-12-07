@@ -774,9 +774,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                                             amount={orderSummary.totalAmount || orderSummary.total} 
                                             onSuccess={async (paymentIntent) => {
                                                 const addr = profile?.address || '';
-                                                const normalizedStatus = paymentIntent?.status === 'succeeded' ? 'paid' : (paymentIntent?.status || null);
-                                                // 💡 FIX: Ensure placeOrder is called with the correct total amount
-                                                const orderCreated = await placeOrder(orderSummary.totalAmount || orderSummary.total, addr, 'CARD', orderSummary.selectedItems, paymentIntent.id, normalizedStatus);
+                                                // Pass the full PaymentIntent object to placeOrder so we can store its id/status and raw payload
+                                                const orderCreated = await placeOrder(orderSummary.totalAmount || orderSummary.total, addr, 'CARD', orderSummary.selectedItems, paymentIntent);
                                                 if (orderCreated) onNavigate('orders');
                                             }} 
                                             onError={(msg) => onNavigate('message', { message: msg, type: 'error' })} 
@@ -1316,7 +1315,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
         };
 
         // Place order (moved inside App so it can access `user`, `handleNavigate`, and `supabase`)
-        const placeOrder = async (total, address, payment, items, clientSecret = null, paymentStatusOverride = null) => {
+        const placeOrder = async (total, address, payment, items, paymentInfo = null) => {
             const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
             if (!SERVER_URL) {
                 handleNavigate('message', { message: 'Configuration Error: VITE_SERVER_URL is missing.', type: 'error' });
@@ -1330,19 +1329,20 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
             try {
                 // Use the passed payment info from PaymentForm's onSuccess when available
                 // PaymentForm calls onSuccess(paymentIntent) and we pass paymentIntent.id and status here.
-                if (clientSecret) {
-                    // If the caller passed a PaymentIntent ID (starts with 'pi_'), use it directly
-                    if (typeof clientSecret === 'string' && clientSecret.startsWith && clientSecret.startsWith('pi_')) {
-                        paymentIntentId = clientSecret;
-                        paymentStatus = paymentStatusOverride || null;
+                let paymentIntentRaw = null;
+                if (paymentInfo) {
+                    if (typeof paymentInfo === 'string' && paymentInfo.startsWith && paymentInfo.startsWith('pi_')) {
+                        paymentIntentId = paymentInfo;
+                    } else if (typeof paymentInfo === 'object') {
+                        paymentIntentRaw = paymentInfo;
+                        paymentIntentId = paymentInfo.id || null;
+                        paymentStatus = paymentInfo.status || null;
                     } else {
-                        // If an unexpected token was provided, avoid attempting to construct a PaymentMethod ID
-                        // and do not call /confirm-payment to prevent invalid PaymentMethod errors.
-                        console.warn('placeOrder: received unexpected clientSecret value; skipping server confirm call.');
+                        console.warn('placeOrder: received unexpected paymentInfo value; skipping extra Stripe calls.');
                     }
                 }
 
-                const normalizedPaymentStatus = paymentStatusOverride || (paymentStatus ? String(paymentStatus).toLowerCase() : null);
+                const normalizedPaymentStatus = paymentStatus || (paymentStatusOverride ? String(paymentStatusOverride).toLowerCase() : null);
                 if (normalizedPaymentStatus === 'succeeded' || normalizedPaymentStatus === 'paid') computedStatus = 'paid';
 
                 const basePayload = {
@@ -1354,6 +1354,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 };
                 if (paymentIntentId) basePayload.payment_intent_id = paymentIntentId;
                 if (normalizedPaymentStatus) basePayload.payment_status = normalizedPaymentStatus;
+                if (paymentIntentRaw) basePayload.payment_intent = paymentIntentRaw;
 
                 const tryInsertOrder = async (payload) => {
                     const { data, error } = await supabase.from('orders').insert(payload).select().single();
@@ -1361,10 +1362,11 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 };
 
                 let { data: order, error: oErr } = await tryInsertOrder(basePayload);
-                if (oErr && /payment_intent_id|payment_status|column .* does not exist/i.test(oErr.message || '')) {
+                if (oErr && /payment_intent_id|payment_status|payment_intent|column .* does not exist/i.test(oErr.message || '')) {
                     const safePayload = { ...basePayload };
                     delete safePayload.payment_intent_id;
                     delete safePayload.payment_status;
+                    delete safePayload.payment_intent;
                     const retry = await tryInsertOrder(safePayload);
                     order = retry.data;
                     oErr = retry.error;
