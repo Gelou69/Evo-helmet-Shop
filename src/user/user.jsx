@@ -222,6 +222,15 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 Login
             </button>
             )}
+            {/* Admin quick-link: goes to /admin route */}
+            <button
+                onClick={() => { window.location.href = '/admin'; }}
+                title="Admin"
+                className="hidden sm:inline-flex p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition items-center justify-center border border-zinc-800 mr-1"
+            >
+                <Lock className="w-5 h-5 text-zinc-400 hover:text-yellow-500 transition-colors" />
+            </button>
+
             <div className="relative cursor-pointer group" onClick={() => onNavigate('cart')}>
                 <div className="p-2 bg-zinc-900 rounded-full border border-zinc-800 group-hover:border-yellow-500 transition-colors">
                     <ShoppingCart className="w-5 h-5 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
