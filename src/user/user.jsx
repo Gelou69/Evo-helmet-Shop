@@ -1303,39 +1303,136 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
 
 // 1. You must change the function signature to accept the clientSecret
 // NOTE: I've added 'stripe' to the signature. Ensure it is passed from CheckoutScreen.
-// --- This logic belongs in your CheckoutScreen or payment handler component ---
-// --- This logic belongs in your CheckoutScreen or payment handler component ---
-const handleStripePayment = async (orderData) => {
-    // 1. Get clientSecret (call /create-payment-intent)
-    const backendResponse = await fetch(`${VITE_BACKEND_URL}/create-payment-intent`, { /* ... */ });
-    const { clientSecret } = await backendResponse.json();
+const placeOrder = async (total, address, payment, items, clientSecret, stripe) => {
+    // Variable for the backend URL (fix for "Failed to fetch")
+    // NOTE: This relies on you creating the .env file with VITE_SERVER_URL=http://localhost:3001
+// NEW CODE: Reads VITE_BACKEND_URL, which you defined
+const SERVER_URL = import.meta.env.VITE_BACKEND_URL;
+    if (!SERVER_URL) {
+        handleNavigate('message', { message: 'Configuration Error: VITE_SERVER_URL is missing.', type: 'error' });
+        return false;
+    }
     
-    // 2. Confirm Payment (handles 3D Secure)
-    const { error, paymentIntent } = await stripe.confirmPayment({
-        elements, // from useElements() hook
-        clientSecret,
-        confirmParams: {
-            // Tells Stripe where to redirect after 3D Secure
-            return_url: `${window.location.origin}/checkout`, 
-        },
-    });
+    let paymentIntentId = null;
+    let paymentStatus = null;
+    let computedStatus = 'pending';
+    
+    try {
+        // ====================================================
+        // A. Confirm Payment with Stripe on Server
+        // ====================================================
 
-    if (error) {
-        // Handle error (e.g., card declined)
-        handleNavigate('message', { message: error.message, type: 'error' });
-    } else if (paymentIntent.status === 'succeeded') {
-        // 3. Payment succeeded, now save the order
-        placeOrder(
-            orderData.total, 
-            orderData.address, 
-            'Stripe', // payment method
-            orderData.items, 
-            paymentIntent.id, 
-            paymentIntent.status
-        );
-    } else {
-        // Handle other statuses (e.g., processing)
-        handleNavigate('message', { message: `Payment status: ${paymentIntent.status}`, type: 'info' });
+        // 2. Extract PaymentMethod ID from the client secret to use in the backend
+        const last4 = clientSecret.substring(clientSecret.length - 4);
+        // Assuming the payment method for this flow is the one used to create the intent
+        const paymentMethodId = `pm_card_${last4}`; 
+
+        // 3. Call your backend server to confirm the payment
+        const confirmResponse = await fetch(`${SERVER_URL}/confirm-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                paymentIntentId: clientSecret, // clientSecret acts as the PI ID
+                paymentMethodId: paymentMethodId,
+            }),
+        });
+
+        const confirmData = await confirmResponse.json();
+        
+        // Change: We now check for a general server error, but allow non-succeeded status
+        if (!confirmResponse.ok) {
+             throw new Error(confirmData.message || "Server error during payment confirmation.");
+        }
+        
+        const paymentIntent = confirmData.paymentIntent;
+        paymentIntentId = paymentIntent.id;
+        paymentStatus = paymentIntent.status;
+
+        // 📌 CRITICAL FIX: Handle 3D Secure / Action Required
+        if (paymentIntent.status === 'requires_action' && paymentIntent.next_action) {
+            
+            handleNavigate('message', { message: 'Awaiting 3D Secure authentication...', type: 'info' });
+            
+            // Execute the client-side action (redirect or popup for authentication)
+            const { error: actionError, paymentIntent: updatedPaymentIntent } = 
+                await stripe.handleNextAction({ clientSecret: paymentIntent.client_secret });
+            
+            if (actionError) {
+                // Customer failed 3D Secure or cancelled
+                throw new Error(actionError.message || '3D Secure authentication failed.');
+            }
+            
+            // Update status after successful authentication
+            paymentStatus = updatedPaymentIntent.status;
+            
+            if (paymentStatus !== 'succeeded') {
+                throw new Error(`Payment failed after authentication. Status: ${paymentStatus}`);
+            }
+        }
+        
+        // Final check: If payment is not succeeded after all steps, throw an error
+        if (paymentStatus !== 'succeeded') {
+            throw new Error(`Payment failed. Status: ${paymentStatus}.`);
+        }
+
+
+        // ====================================================
+        // B. Save Order to Supabase (Existing Logic)
+        // ====================================================
+        
+        // Normalize incoming payment status and set a canonical order status (lowercase)
+        const normalizedPaymentStatus = paymentStatus ? String(paymentStatus).toLowerCase() : null;
+        
+        if (normalizedPaymentStatus === 'succeeded' || normalizedPaymentStatus === 'paid') computedStatus = 'paid';
+        // Allow callers to override via payment method if appropriate (e.g., COD should remain 'pending')
+
+        // Build the order payload
+        const basePayload = {
+            user_id: user.id,
+            total_amount: total,
+            shipping_address: address,
+            payment_method: payment,
+            status: computedStatus
+        };
+        // Use the IDs and status received from Stripe
+        if (paymentIntentId) basePayload.payment_intent_id = paymentIntentId;
+        if (normalizedPaymentStatus) basePayload.payment_status = normalizedPaymentStatus;
+
+        // Helper to attempt insert and optionally retry without Stripe fields if schema lacks them
+        const tryInsertOrder = async (payload) => {
+            const { data, error } = await supabase.from('orders').insert(payload).select().single();
+            return { data, error };
+        };
+
+        // First attempt: try inserting full payload
+        let { data: order, error: oErr } = await tryInsertOrder(basePayload);
+
+        // If the DB reports missing column(s) for payment fields, retry without them
+        if (oErr && /payment_intent_id|payment_status|column .* does not exist/i.test(oErr.message || '')) {
+            const safePayload = { ...basePayload };
+            delete safePayload.payment_intent_id;
+            delete safePayload.payment_status;
+            const retry = await tryInsertOrder(safePayload);
+            order = retry.data;
+            oErr = retry.error;
+        }
+
+        if (oErr) throw oErr;
+
+        const { error: iErr } = await supabase.from('order_items').insert(items.map(i => ({ order_id: order.id, product_id: i.product_id, quantity: i.quantity, product_size: i.size, price_at_purchase: i.products.price })));
+        if (iErr) throw iErr;
+
+        await Promise.all(items.map(i => supabase.from('cart_items').delete().match({ user_id: user.id, product_id: i.product_id, size: i.size })));
+        await fetchCart(user.id);
+        handleNavigate('message', { message: 'Payment successful and order placed!', type: 'success' });
+        return true;
+    } catch (e) {
+        // If an error occurred in either Stripe confirmation or Supabase insertion
+        console.error("Order or Payment Failure:", e);
+        handleNavigate('message', { message: e.message || 'Payment failed or order could not be placed.', type: 'error' });
+        return false;
     }
 };
 // ... (Keep the rest of the file)
