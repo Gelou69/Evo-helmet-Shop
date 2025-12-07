@@ -92,11 +92,6 @@ function MainApp() {
 	const handleLoadingComplete = () => {
 		setLoading(false);
 	};
-
-	if (loading) {
-		return <LoadingScreen onComplete={handleLoadingComplete} />;
-	}
-
 	// showAdmin controls whether admin UI is shown as an overlay while keeping the URL at root
 	const [showAdmin, setShowAdmin] = React.useState(false);
 
@@ -125,6 +120,10 @@ function MainApp() {
 				</div>
 			</div>
 		);
+	}
+
+	if (loading) {
+		return <LoadingScreen onComplete={handleLoadingComplete} />;
 	}
 
 	return (
