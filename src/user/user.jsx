@@ -1302,7 +1302,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
       // ... (Keep the existing code above this function)
 
 // 1. You must change the function signature to accept the clientSecret
-const placeOrder = async (total, address, payment, items, clientSecret) => {
+// NOTE: I've added 'stripe' to the signature. Ensure it is passed from CheckoutScreen.
+const placeOrder = async (total, address, payment, items, clientSecret, stripe) => {
     // Variable for the backend URL (fix for "Failed to fetch")
     // NOTE: This relies on you creating the .env file with VITE_SERVER_URL=http://localhost:3001
     const SERVER_URL = import.meta.env.VITE_SERVER_URL;
@@ -1317,13 +1318,13 @@ const placeOrder = async (total, address, payment, items, clientSecret) => {
     
     try {
         // ====================================================
-        // A. Confirm Payment with Stripe
+        // A. Confirm Payment with Stripe on Server
         // ====================================================
 
         // 2. Extract PaymentMethod ID from the client secret to use in the backend
         const last4 = clientSecret.substring(clientSecret.length - 4);
         // Assuming the payment method for this flow is the one used to create the intent
-        const paymentMethodId = `pm_card_${last4}`; // This is a safe assumption for this flow
+        const paymentMethodId = `pm_card_${last4}`; 
 
         // 3. Call your backend server to confirm the payment
         const confirmResponse = await fetch(`${SERVER_URL}/confirm-payment`, {
@@ -1338,16 +1339,43 @@ const placeOrder = async (total, address, payment, items, clientSecret) => {
         });
 
         const confirmData = await confirmResponse.json();
-
-        if (!confirmResponse.ok || !confirmData.success) {
-            // Handle cases where the payment confirmation failed on the server
-            throw new Error(confirmData.message || "Payment confirmation failed.");
+        
+        // Change: We now check for a general server error, but allow non-succeeded status
+        if (!confirmResponse.ok) {
+             throw new Error(confirmData.message || "Server error during payment confirmation.");
         }
-
-        // 4. Update the payment variables based on the successful response
+        
         const paymentIntent = confirmData.paymentIntent;
         paymentIntentId = paymentIntent.id;
         paymentStatus = paymentIntent.status;
+
+        // 📌 CRITICAL FIX: Handle 3D Secure / Action Required
+        if (paymentIntent.status === 'requires_action' && paymentIntent.next_action) {
+            
+            handleNavigate('message', { message: 'Awaiting 3D Secure authentication...', type: 'info' });
+            
+            // Execute the client-side action (redirect or popup for authentication)
+            const { error: actionError, paymentIntent: updatedPaymentIntent } = 
+                await stripe.handleNextAction({ clientSecret: paymentIntent.client_secret });
+            
+            if (actionError) {
+                // Customer failed 3D Secure or cancelled
+                throw new Error(actionError.message || '3D Secure authentication failed.');
+            }
+            
+            // Update status after successful authentication
+            paymentStatus = updatedPaymentIntent.status;
+            
+            if (paymentStatus !== 'succeeded') {
+                throw new Error(`Payment failed after authentication. Status: ${paymentStatus}`);
+            }
+        }
+        
+        // Final check: If payment is not succeeded after all steps, throw an error
+        if (paymentStatus !== 'succeeded') {
+            throw new Error(`Payment failed. Status: ${paymentStatus}.`);
+        }
+
 
         // ====================================================
         // B. Save Order to Supabase (Existing Logic)
@@ -1406,7 +1434,6 @@ const placeOrder = async (total, address, payment, items, clientSecret) => {
         return false;
     }
 };
-
 // ... (Keep the rest of the file)
 
         useEffect(() => {
