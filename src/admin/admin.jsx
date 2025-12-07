@@ -234,6 +234,19 @@ function App() {
     else fetchProducts();
   };
 
+  // Move product up or down in the local UI list (non-persistent)
+  const moveProduct = (id, direction) => {
+    setProducts(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx === -1) return prev;
+      const newArr = [...prev];
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= newArr.length) return prev;
+      [newArr[idx], newArr[swapIdx]] = [newArr[swapIdx], newArr[idx]];
+      return newArr;
+    });
+  };
+
   // Filter orders
   const [filterStatus, setFilterStatus] = useState('All');
 
@@ -491,8 +504,7 @@ function App() {
             </div>
 
             <ul>
-              {[...products]
-                .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+              {products
                 .map(product => (
                 <li key={product.id}>
                   {product.image_path ? (
@@ -511,6 +523,8 @@ function App() {
                     <div className="button-group">
                       <button className="secondary" onClick={() => setEditingProduct({...product, image: null})}>Edit</button>
                       <button className="danger" onClick={() => deleteProduct(product.id)}>Delete</button>
+                      <button className="move" onClick={() => moveProduct(product.id, 'up')} title="Move Up">↑</button>
+                      <button className="move" onClick={() => moveProduct(product.id, 'down')} title="Move Down">↓</button>
                     </div>
                   </div>
                 </li>
