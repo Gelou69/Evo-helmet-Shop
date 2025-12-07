@@ -105,10 +105,9 @@
 // CREATE PAYMENT INTENT
 // ===============================================
 app.post('/create-payment-intent', async (req, res) => {
+    // ... (rest of the code)
+
     try {
-        if (!stripe) return res.status(501).json({ error: 'Stripe not configured on server.' });
-        const { amount, currency = 'usd' } = req.body;
- 
         // ... (currency conversion logic) ...
 
         const paymentIntent = await stripe.paymentIntents.create({
@@ -116,6 +115,8 @@ app.post('/create-payment-intent', async (req, res) => {
             currency: currency,
             automatic_payment_methods: {
                 enabled: true,
+                // FIX: Disable redirect-based methods, so a return_url is not required.
+                allow_redirects: 'never', 
             },
         });
 
@@ -123,7 +124,7 @@ app.post('/create-payment-intent', async (req, res) => {
 
         res.json({
             clientSecret: paymentIntent.client_secret,
-            paymentIntentId: paymentIntent.id, // <-- THIS IS THE CORRECT LINE
+            paymentIntentId: paymentIntent.id,
         });
 
     } catch (err) {
