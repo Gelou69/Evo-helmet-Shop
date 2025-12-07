@@ -226,13 +226,6 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 <div className="p-2 bg-zinc-900 rounded-full border border-zinc-800 group-hover:border-yellow-500 transition-colors">
                     <ShoppingCart className="w-5 h-5 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
                 </div>
-
-                {/* Contact Email (required) */}
-                <div className="p-6 rounded-2xl border bg-zinc-900/30 border-zinc-800">
-                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-zinc-300 mb-3">Contact Email</h3>
-                    <InputField name="contact_email" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} icon={Mail} required={true} />
-                    {!email && <p className="text-xs text-red-400 mt-2">Please enter a valid email to receive order confirmation.</p>}
-                </div>
             {cartItemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-black">
                 {cartItemCount}
@@ -649,8 +642,6 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 const data = await res.json();
                 const clientSecret = data.clientSecret || data.client_secret;
                 if (!clientSecret) throw new Error('Payment initialization failed (missing client secret)');
-                const card = elements.getElement(CardElement);
-                if (!card) throw new Error('Card input not found');
 
                 const confirm = await stripe.confirmCardPayment(clientSecret, { payment_method: { card } });
 
@@ -1351,7 +1342,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                     }
                 }
 
-                const normalizedPaymentStatus = paymentStatus || (paymentStatusOverride ? String(paymentStatusOverride).toLowerCase() : null);
+                const normalizedPaymentStatus = paymentStatus || null;
                 if (normalizedPaymentStatus === 'succeeded' || normalizedPaymentStatus === 'paid') computedStatus = 'paid';
 
                 const basePayload = {
