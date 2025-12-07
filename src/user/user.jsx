@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import './user.css';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements, PaymentElement, usePaymentIntent } from '@stripe/react-stripe-js';    // Stripe client initialization using Vite env variable `VITE_STRIPE_PUBLISHABLE_KEY`
+import { Elements, CardElement, useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';    // Stripe client initialization using Vite env variable `VITE_STRIPE_PUBLISHABLE_KEY`
     const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
     // --- Supabase Initialization ---
     // NOTE: Ensure your .env file has VITE_ prefix (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY)
