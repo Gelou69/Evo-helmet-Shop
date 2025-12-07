@@ -226,6 +226,13 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 <div className="p-2 bg-zinc-900 rounded-full border border-zinc-800 group-hover:border-yellow-500 transition-colors">
                     <ShoppingCart className="w-5 h-5 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
                 </div>
+
+                {/* Contact Email (required) */}
+                <div className="p-6 rounded-2xl border bg-zinc-900/30 border-zinc-800">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-zinc-300 mb-3">Contact Email</h3>
+                    <InputField name="contact_email" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} icon={Mail} required={true} />
+                    {!email && <p className="text-xs text-red-400 mt-2">Please enter a valid email to receive order confirmation.</p>}
+                </div>
             {cartItemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-black">
                 {cartItemCount}
@@ -675,11 +682,12 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
     };
 
     // --- CHECKOUT SCREEN ---
-   const CheckoutScreen = ({ onNavigate, user, orderSummary, placeOrder }) => {
-    const [profile, setProfile] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [selectedPayment, setSelectedPayment] = useState('COD');
-    const itemsToCheckout = orderSummary?.selectedItems || [];
+    const CheckoutScreen = ({ onNavigate, user, orderSummary, placeOrder }) => {
+     const [profile, setProfile] = useState(null);
+     const [loading, setLoading] = useState(true);
+     const [selectedPayment, setSelectedPayment] = useState('COD');
+     const [email, setEmail] = useState(user?.email || '');
+     const itemsToCheckout = orderSummary?.selectedItems || [];
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -774,8 +782,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                                             amount={orderSummary.totalAmount || orderSummary.total} 
                                             onSuccess={async (paymentIntent) => {
                                                 const addr = profile?.address || '';
-                                                // Pass the full PaymentIntent object to placeOrder so we can store its id/status and raw payload
-                                                const orderCreated = await placeOrder(orderSummary.totalAmount || orderSummary.total, addr, 'CARD', orderSummary.selectedItems, paymentIntent);
+                                                // Pass the full PaymentIntent object and customer email to placeOrder so we can store its id/status and raw payload
+                                                const orderCreated = await placeOrder(orderSummary.totalAmount || orderSummary.total, addr, 'CARD', orderSummary.selectedItems, email, paymentIntent);
                                                 if (orderCreated) onNavigate('orders');
                                             }} 
                                             onError={(msg) => onNavigate('message', { message: msg, type: 'error' })} 
@@ -799,7 +807,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 {selectedPayment === 'COD' ? (
                     <button
                         onClick={async () => {
-                            const success = await placeOrder(orderSummary.total, profile.address, selectedPayment, itemsToCheckout);
+                            if (!email) { onNavigate('message', { message: 'Please provide an email address before placing the order.', type: 'error' }); return; }
+                            const success = await placeOrder(orderSummary.total, profile.address, selectedPayment, itemsToCheckout, email);
                             if (success) onNavigate('orders');
                         }}
                         disabled={isAddressMissing || itemsToCheckout.length === 0}
@@ -1315,7 +1324,7 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
         };
 
         // Place order (moved inside App so it can access `user`, `handleNavigate`, and `supabase`)
-        const placeOrder = async (total, address, payment, items, paymentInfo = null) => {
+        const placeOrder = async (total, address, payment, items, customerEmail = null, paymentInfo = null) => {
             const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
             if (!SERVER_URL) {
                 handleNavigate('message', { message: 'Configuration Error: VITE_SERVER_URL is missing.', type: 'error' });
@@ -1350,7 +1359,8 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                     total_amount: total,
                     shipping_address: address,
                     payment_method: payment,
-                    status: computedStatus
+                    status: computedStatus,
+                    customer_email: customerEmail || null
                 };
                 if (paymentIntentId) basePayload.payment_intent_id = paymentIntentId;
                 if (normalizedPaymentStatus) basePayload.payment_status = normalizedPaymentStatus;
@@ -1362,11 +1372,12 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
                 };
 
                 let { data: order, error: oErr } = await tryInsertOrder(basePayload);
-                if (oErr && /payment_intent_id|payment_status|payment_intent|column .* does not exist/i.test(oErr.message || '')) {
+                if (oErr && /payment_intent_id|payment_status|payment_intent|customer_email|column .* does not exist/i.test(oErr.message || '')) {
                     const safePayload = { ...basePayload };
                     delete safePayload.payment_intent_id;
                     delete safePayload.payment_status;
                     delete safePayload.payment_intent;
+                    delete safePayload.customer_email;
                     const retry = await tryInsertOrder(safePayload);
                     order = retry.data;
                     oErr = retry.error;
