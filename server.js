@@ -101,7 +101,6 @@ app.post('/create-payment-intent', async (req, res) => {
 // ===============================================
 // CONFIRM PAYMENT (Optional - for manual flow)
 // ===============================================
-// DELETE THIS BLOCK FROM server.txt
 app.post('/confirm-payment', async (req, res) => {
     try {
         const { paymentIntentId, paymentMethodId } = req.body;
@@ -119,12 +118,28 @@ app.post('/confirm-payment', async (req, res) => {
 
         console.log("✓ Payment confirmed:", paymentIntent.status);
 
-        // ... (rest of the logic)
+        if (paymentIntent.status === 'succeeded') {
+            res.json({ 
+                success: true, 
+                message: "Payment successful",
+                paymentIntent 
+            });
+        } else {
+            res.json({ 
+                success: false, 
+                message: `Payment status: ${paymentIntent.status}` 
+            });
+        }
 
     } catch (err) {
-        // ...
+        console.error("❌ Payment confirmation error:", err.message);
+        res.status(500).json({ 
+            success: false, 
+            message: err.message 
+        });
     }
 });
+
 // ===============================================
 // HEALTH CHECK
 // ===============================================
