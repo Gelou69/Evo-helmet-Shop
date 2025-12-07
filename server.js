@@ -101,9 +101,7 @@ app.post('/create-payment-intent', async (req, res) => {
 // ===============================================
 // CONFIRM PAYMENT (Optional - for manual flow)
 // ===============================================
-// ===============================================
-// CONFIRM PAYMENT (Optional - for manual flow)
-// ===============================================
+// DELETE THIS BLOCK FROM server.txt
 app.post('/confirm-payment', async (req, res) => {
     try {
         const { paymentIntentId, paymentMethodId } = req.body;
@@ -121,21 +119,10 @@ app.post('/confirm-payment', async (req, res) => {
 
         console.log("✓ Payment confirmed:", paymentIntent.status);
 
-        // 📌 CRITICAL FIX: Always return the full paymentIntent object.
-        // This allows the frontend to extract the client_secret and handle 'requires_action' status.
-        res.json({ 
-            success: paymentIntent.status === 'succeeded', // Only true if payment is final
-            message: `Payment status: ${paymentIntent.status}`,
-            paymentIntent // The full Stripe PaymentIntent object
-        });
+        // ... (rest of the logic)
 
     } catch (err) {
-        console.error("❌ Payment confirmation error:", err.message);
-        // It is safer to return the error message while still returning the general status
-        res.status(500).json({ 
-            success: false, 
-            message: err.message 
-        });
+        // ...
     }
 });
 // ===============================================
