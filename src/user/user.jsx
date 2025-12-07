@@ -1302,6 +1302,9 @@ import { Elements, CardElement, useStripe, useElements, PaymentElement, usePayme
       // ... (Keep the existing code above this function)
 
 // 1. You must change the function signature to accept the clientSecret
+// ... (Keep the existing code above this function)
+
+// 1. You must change the function signature to accept the clientSecret
 const placeOrder = async (total, address, payment, items, clientSecret) => {
     // Variable for the backend URL (fix for "Failed to fetch")
     // NOTE: This relies on you creating the .env file with VITE_SERVER_URL=http://localhost:3001
@@ -1407,7 +1410,6 @@ const placeOrder = async (total, address, payment, items, clientSecret) => {
     }
 };
 
-// ... (Keep the rest of the file)
 
         useEffect(() => {
             if (!supabase) { setScreen('home'); return; }
