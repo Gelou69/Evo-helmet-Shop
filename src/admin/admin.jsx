@@ -179,17 +179,44 @@ function App() {
   // --- UTILITY/API FUNCTIONS (Omitted for brevity, unchanged) ---
   const signIn = async () => {
     setAuthMessage('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setAuthMessage('Sign in failed: ' + error.message);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAuthMessage('Sign in failed: ' + error.message);
+    } else {
+      // On successful sign in, navigate to the home page automatically
+      try {
+        window.location.href = '/';
+      } catch (e) {
+        console.warn('Unable to redirect after sign in:', e);
+      }
+    }
   };
   const signUp = async () => {
     setAuthMessage('');
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setAuthMessage('Sign up failed: ' + error.message);
     } else {
-      setAuthMessage('Sign up successful! Please check your email to confirm your account.');
-      setIsSigningUp(false);
+      // If Supabase returns a user id, create a corresponding profiles row (safe no-op if profile already exists)
+      const userId = data?.user?.id;
+      if (userId) {
+        try {
+          const defaultUsername = email ? String(email).split('@')[0] : null;
+          const { error: profileError } = await supabase.from('profiles').insert({ id: userId, username: defaultUsername }).select();
+          if (profileError) console.warn('profiles insert warning:', profileError.message || profileError);
+        } catch (e) {
+          console.warn('Error creating profile after signup:', e.message || e);
+        }
+      }
+
+      // Auto-redirect to home page after signup (user may still need to confirm email depending on Supabase settings)
+      try {
+        window.location.href = '/';
+      } catch (e) {
+        console.warn('Unable to redirect after sign up:', e);
+        setAuthMessage('Sign up successful! Please check your email to confirm your account.');
+        setIsSigningUp(false);
+      }
     }
   };
   const signOut = async () => {
