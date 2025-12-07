@@ -98,20 +98,44 @@ function MainApp() {
 		return <LoadingScreen onComplete={handleLoadingComplete} />;
 	}
 
+	// showAdmin controls whether admin UI is shown as an overlay while keeping the URL at root
+	const [showAdmin, setShowAdmin] = React.useState(false);
+
 	// Wrapper component that injects react-router's navigate into User
 	function UserWrapper() {
 		const navigate = useNavigate();
-		const navigateTo = (path) => navigate(path);
+		const navigateTo = (path) => {
+			if (path === '/admin') {
+				// Open admin as an in-page overlay instead of navigating to /admin
+				setShowAdmin(true);
+			} else {
+				navigate(path);
+			}
+		};
 		return <User navigateTo={navigateTo} />;
 	}
 
+	function AdminModal({ onClose }) {
+		return (
+			<div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)' }}>
+				<div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10001 }}>
+					<button onClick={onClose} style={{ padding: '8px 12px', borderRadius: 8, background: '#111', color: '#fff', border: '1px solid #333' }}>Close Admin</button>
+				</div>
+				<div style={{ position: 'absolute', inset: '40px', overflow: 'auto', zIndex: 10000 }}>
+					<Admin />
+				</div>
+			</div>
+		);
+	}
+
 	return (
+		<>
 		<BrowserRouter>
 			<Routes>
 				{/* User Routes */}
 				<Route path="/" element={<UserWrapper />} />
 				<Route path="/user" element={<UserWrapper />} />
-				{/* Admin Route */}
+				{/* Admin Route (kept for compatibility but not required) */}
 				<Route path="/admin" element={<Admin />} />
 				{/* 404 Not Found */}
 				<Route 
@@ -133,6 +157,8 @@ function MainApp() {
 				/>
 			</Routes>
 		</BrowserRouter>
+		{showAdmin && <AdminModal onClose={() => setShowAdmin(false)} />}
+		</>
 	);
 }
 
