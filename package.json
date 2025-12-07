@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
-    "@stripe/react-stripe-js": "^2.9.0",
-    "@stripe/stripe-js": "^2.0.0",
+    "@stripe/react-stripe-js": "^5.4.1",
+    "@stripe/stripe-js": "^8.5.3",
     "@supabase/supabase-js": "^2.80.0",
     "@vis.gl/react-google-maps": "^1.7.0",
     "concurrently": "^9.2.1",
